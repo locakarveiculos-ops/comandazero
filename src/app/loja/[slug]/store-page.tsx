@@ -15,7 +15,8 @@ import { Checkout } from "@/components/loja/checkout";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
-import { addToCart, requestBill, useCart, useMenu, useOrders, useDb } from "@/lib/repositories";
+import { addToCart, requestBill, useCart, useOrders, useDb } from "@/lib/repositories";
+import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
 import type { OrderMode, Product } from "@/lib/types";
 import { MODE_LABEL, STATUS_LABEL, cartSubtotal, cn, isOpenNow, money, todayHours } from "@/lib/utils";
 
@@ -31,10 +32,11 @@ export function StorePage({ slug }: { slug: string }) {
   const params = useSearchParams();
   const table = params.get("mesa")?.replace(/\D/g, "").padStart(2, "0").slice(-2) || undefined;
   const { tenant, notFound } = useStoreTenant(slug);
-  const { categories, products } = useMenu(tenant?.id);
+  const { categories, products } = useStoreMenu(tenant);
   const cart = useCart(tenant?.id ?? "");
   const customer = useDb((s) => s.customer);
-  const myOrders = useOrders(tenant?.id).filter((o) => customer && o.customer.phone.endsWith(customer.phone.replace(/\D/g, "").slice(-11)) && !["entregue", "cancelado"].includes(o.status));
+  // Pedidos recentes deste aparelho: na loja real ficam guardados com o token (ver checkout).
+  const myOrders = useOrders(isRemote(tenant) ? undefined : tenant?.id).filter((o) => customer && o.customer.phone.endsWith(customer.phone.replace(/\D/g, "").slice(-11)) && !["entregue", "cancelado"].includes(o.status));
 
   const [mode, setMode] = useState<OrderMode>(table ? "mesa" : "retirada");
   const [query, setQuery] = useState("");

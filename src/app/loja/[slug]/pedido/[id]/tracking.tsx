@@ -2,28 +2,74 @@
 
 import { Bike, Check, ChefHat, ClipboardCheck, MessageCircle, PackageCheck, Upload } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
 import { useHydrated } from "@/components/providers";
 import { useOrder } from "@/lib/repositories";
-import type { OrderStatus } from "@/lib/types";
+import { isRemote } from "@/lib/repositories/engine";
+import type { Order, OrderStatus } from "@/lib/types";
 import { MODE_LABEL, STATUS_LABEL, cn, fmtDateTime, fmtTime, money } from "@/lib/utils";
+
+type Tracked = {
+  id: string; number: number; status: OrderStatus; mode: Order["mode"]; payment_status: Order["paymentStatus"];
+  total: number; deposit: number | null; scheduled_for: string | null; table_number: string | null; created_at: string;
+  customer_first_name: string; items: { name: string; qty: number; unit_price: number; options: { name: string }[] }[];
+  events: { status: OrderStatus; at: string }[];
+};
+
+/** Loja real: acompanha pelo token (qualquer aparelho). Atualiza a cada 5 s enquanto o pedido não termina. */
+function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
+  const [state, setState] = useState<{ order: Order | null; loading: boolean }>({ order: null, loading: enabled });
+  useEffect(() => {
+    if (!enabled || !token) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const load = async () => {
+      const r = await fetch(`/api/rastreio?id=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`, { cache: "no-store" }).catch(() => null);
+      if (!alive) return;
+      const d = r?.ok ? ((await r.json()) as Tracked) : null;
+      setState({ order: d ? toOrder(d) : null, loading: false });
+      if (!d || !["entregue", "cancelado"].includes(d.status)) timer = setTimeout(load, 5000);
+    };
+    void load();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [id, token, enabled]);
+  return enabled && !token ? { order: null, loading: false } : state;
+}
+
+const toOrder = (d: Tracked): Order => ({
+  id: d.id, number: d.number, tenantId: "", channel: "loja", mode: d.mode, status: d.status, paymentStatus: d.payment_status,
+  payments: [], paymentMethod: "pix", gateway: "presencial",
+  items: d.items.map((i, k) => ({ key: String(k), productId: "", name: i.name, image: "", unitPrice: Number(i.unit_price), qty: i.qty, options: (i.options ?? []).map((o) => ({ groupId: "", groupName: "", choiceId: "", name: o.name, price: 0 })), notes: "" })),
+  subtotal: Number(d.total), deliveryFee: 0, discount: 0, total: Number(d.total), customer: { name: d.customer_first_name, phone: "" },
+  table: d.table_number ?? undefined, scheduledFor: d.scheduled_for ?? undefined, deposit: d.deposit == null ? undefined : Number(d.deposit),
+  createdAt: d.created_at, updatedAt: d.created_at, history: d.events, seen: true,
+});
 
 export function Tracking({ slug, id }: { slug: string; id: string }) {
   const { tenant } = useStoreTenant(slug);
   const hydrated = useHydrated();
-  const order = useOrder(id);
+  const remote = isRemote(tenant);
+  const token = useSearchParams().get("t");
+  const localOrder = useOrder(id);
+  const tracked = useTrackedOrder(id, token, remote);
+  const order = remote ? tracked.order : localOrder;
   const [proof, setProof] = useState<string>("");
 
-  if (!tenant || !hydrated) return <Skeleton className="m-4 h-80" />;
-  if (!order || order.tenantId !== tenant.id)
+  if (!tenant || (!remote && !hydrated) || (remote && tracked.loading)) return <Skeleton className="m-4 h-80" />;
+  if (!order || (!remote && order.tenantId !== tenant.id))
     return (
       <TenantTheme tenant={tenant} className="grid min-h-screen place-items-center p-6 text-center">
         <main id="conteudo">
-          <h1 className="text-2xl font-bold">Pedido não encontrado neste aparelho</h1>
+          <h1 className="text-2xl font-bold">{remote ? "Pedido não encontrado" : "Pedido não encontrado neste aparelho"}</h1>
+          {remote && <p className="mt-2 text-muted">Abra pelo link completo recebido ao fazer o pedido.</p>}
           <Link href={`/loja/${slug}`} className="mt-4 inline-flex min-h-11 items-center rounded-full bg-primary px-5 font-semibold text-primary-ink">
             Voltar ao cardápio
           </Link>

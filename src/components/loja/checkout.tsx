@@ -11,6 +11,7 @@ import { PixModal } from "./pix-modal";
 import { createSandboxCharge, gatewayFor } from "@/lib/integrations/payments/factory";
 import type { ChargeResult } from "@/lib/integrations/payments/types";
 import { couponDiscount, couponError } from "@/lib/pricing";
+import { isRemote } from "@/lib/repositories/engine";
 import { addToTable, clearCart, createOrder, findCoupon, markOrderPaid, rememberCustomer, setCartQty, useCart, useDb, useIntegrations } from "@/lib/repositories";
 import type { OrderMode, PaymentMethod, Tenant } from "@/lib/types";
 import { MODE_LABEL, cartSubtotal, cn, formatCep, formatPhone, isValidBrPhone, money, onlyDigits, round2 } from "@/lib/utils";
@@ -96,10 +97,60 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
     toast.success(`Cupom ${c!.code} aplicado`);
   };
 
-  const finish = (orderId: string) => {
+  const finish = (orderId: string, token?: string) => {
     clearCart(tenant.id);
     onOpenChange(false);
-    router.push(`/loja/${tenant.slug}/pedido/${orderId}`);
+    router.push(`/loja/${tenant.slug}/pedido/${orderId}${token ? `?t=${token}` : ""}`);
+  };
+
+  const [sending, setSending] = useState(false);
+  const [idemKey] = useState(() => crypto.randomUUID().replace(/-/g, ""));
+
+  /** Loja real: o servidor recalcula tudo pelo banco; aqui só vão ids, quantidades e escolhas. */
+  const submitRemote = async () => {
+    setSending(true);
+    try {
+      const r = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: tenant.slug,
+          mode: isPreorder ? "encomenda" : mode,
+          items: items.map((i) => ({
+            product_id: i.productId,
+            qty: i.qty,
+            choice_ids: i.options.map((o) => o.choiceId),
+            notes: i.notes,
+            ...(i.cake?.kg ? { cake: i.cake } : {}),
+          })),
+          customer: { name: name.trim(), phone },
+          payment: pay,
+          zoneId: mode === "delivery" ? zoneId : undefined,
+          address: mode === "delivery" ? { ...addr, district: zone?.bairro ?? addr.district } : undefined,
+          table: mode === "mesa" ? table : undefined,
+          coupon: appliedCoupon || undefined,
+          changeFor: pay === "dinheiro" && changeFor ? Number(changeFor.replace(",", ".")) : undefined,
+          scheduledFor: !isPreorder && pickupTime ? todayAt(pickupTime) : undefined,
+          idempotencyKey: idemKey,
+        }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { id?: string; number?: number; trackToken?: string; error?: string };
+      if (!r.ok || !d.id) throw new Error(d.error || "Não foi possível enviar o pedido.");
+      // Guarda o acesso ao pedido neste aparelho (o link com o token também funciona em qualquer outro).
+      try {
+        const k = `cz-meus-pedidos:${tenant.slug}`;
+        const list = JSON.parse(localStorage.getItem(k) || "[]") as { id: string; t: string; n: number }[];
+        localStorage.setItem(k, JSON.stringify([{ id: d.id, t: d.trackToken, n: d.number }, ...list].slice(0, 10)));
+      } catch {
+        /* sem storage: link do pedido continua válido */
+      }
+      toast.success(`Pedido #${d.number} enviado!`);
+      finish(d.id, d.trackToken);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const submit = () => {
@@ -109,6 +160,7 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
       return;
     }
     rememberCustomer(name.trim(), phone);
+    if (isRemote(tenant)) return void submitRemote();
     const gateway = gatewayFor(settings, pay);
     const order = createOrder({
       tenantId: tenant.id,
@@ -265,6 +317,11 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
               <h3 id="h-pag" className="font-bold text-ink">
                 Pagamento
               </h3>
+              {isRemote(tenant) && pay === "pix" && (
+                <p className="rounded-xl bg-highlight/15 p-3 text-xs text-ink" data-testid="pix-presencial">
+                  O Pix é pago na retirada ou entrega, direto para a loja. O pagamento online entra quando a loja ativar o gateway.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Forma de pagamento">
                 {PAY.map((p) => {
                   const on = pay === p.id;
@@ -339,8 +396,8 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
         )}
         {items.length > 0 && (
           <div className="sticky bottom-0 border-t border-line bg-surface p-4">
-            <Button size="lg" className="w-full justify-between" onClick={submit}>
-              <span>{pay === "pix" ? "Pagar com Pix" : "Enviar pedido"}</span>
+            <Button size="lg" className="w-full justify-between" onClick={submit} loading={sending}>
+              <span>{pay === "pix" && !isRemote(tenant) ? "Pagar com Pix" : "Enviar pedido"}</span>
               <span className="tabular-nums">{money(payNow)}</span>
             </Button>
           </div>
