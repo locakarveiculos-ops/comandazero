@@ -35,11 +35,11 @@ export function tenantFromHost(host: string, root = process.env.NEXT_PUBLIC_ROOT
 // Lojas de demonstração: painel aberto para visitação (dados só no navegador). As demais exigem login.
 const DEMO_SLUGS = new Set((process.env.DEMO_TENANTS || "cafe-e-flor,burger-station").split(",").map((s) => s.trim()));
 
-/** Renova a sessão do Supabase (cookies) e devolve se há usuário logado. */
+/** Renova a sessão do Supabase (cookies), devolve se há usuário e um cliente com a sessão dele. */
 async function session(req: NextRequest, res: NextResponse) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return { res, user: false };
+  if (!url || !key) return { res, user: false, sb: null };
   let out = res;
   const sb = createServerClient(url, key, {
     cookies: {
@@ -54,7 +54,7 @@ async function session(req: NextRequest, res: NextResponse) {
     },
   });
   const { data } = await sb.auth.getUser();
-  return { res: out, user: !!data.user };
+  return { res: () => out, user: !!data.user, sb };
 }
 
 /** Rota protegida? (verificação otimista; a página confere papel e loja no servidor). */
@@ -79,12 +79,26 @@ export async function proxy(req: NextRequest) {
   // O layout do painel usa o caminho para conferir a permissão da página (não confia no cliente).
   const headers = new Headers(req.headers);
   headers.set("x-cz-path", path);
-  const { res, user } = await session(req, NextResponse.next({ request: { headers } }));
-  if (!user && needsLogin(path)) {
+  const s = await session(req, NextResponse.next({ request: { headers } }));
+  const res = typeof s.res === "function" ? s.res() : s.res;
+  if (!s.user && needsLogin(path)) {
     const to = req.nextUrl.clone();
     to.pathname = "/entrar";
     to.search = `?next=${encodeURIComponent(path + req.nextUrl.search)}`;
     return NextResponse.redirect(to);
+  }
+  // Logado mas sem vínculo: 403 antes de a página começar a transmitir (o layout confere de novo, com o papel da página).
+  if (s.user && s.sb && needsLogin(path) && path !== "/painel/nova-loja") {
+    const slug = /^\/painel\/([^/]+)/.exec(path)?.[1];
+    const allowed = slug
+      ? await s.sb.rpc("my_tenants").then(({ data }) => ((data ?? []) as { slug: string }[]).some((t) => t.slug === slug) || s.sb!.rpc("is_platform_admin").then((r) => r.data === true))
+      : await s.sb.rpc("is_platform_admin").then((r) => r.data === true);
+    if (!allowed) {
+      const to = req.nextUrl.clone();
+      to.pathname = "/acesso-negado";
+      to.search = "";
+      return NextResponse.rewrite(to, { status: 403 });
+    }
   }
   res.headers.set("X-Robots-Tag", "noindex");
   return res;

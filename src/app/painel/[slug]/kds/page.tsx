@@ -8,7 +8,7 @@ import { BrandLogo } from "@/components/brand-switcher";
 import { HelpButton } from "@/components/training/help-button";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useDb } from "@/lib/repositories";
-import { changeOrderStatus, useStoreOrders } from "@/lib/repositories/engine";
+import { changeOrderStatus, isRemote, useStoreOrders } from "@/lib/repositories/engine";
 import { toast } from "sonner";
 import type { Tenant } from "@/lib/types";
 import { mutate } from "@/lib/repositories/store";
@@ -31,7 +31,7 @@ const LEVEL = {
 export default function KdsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const { orders } = useStoreOrders(tenant);
+  const { orders, live } = useStoreOrders(tenant);
   const soundOn = useDb((s) => s.soundOn);
   const now = useTick();
   const [full, setFull] = useState(false);
@@ -57,6 +57,12 @@ export default function KdsPage() {
         <h1 className="cz-heading flex-1 text-xl font-bold">
           KDS · {tenant.name}
         </h1>
+        {isRemote(tenant) && (
+          <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", live ? "text-[#4ade80]" : "text-[#fca5a5]")} data-testid="conexao" role="status">
+            <span className={cn("size-2.5 rounded-full", live ? "bg-[#4ade80]" : "bg-[#fca5a5]")} aria-hidden />
+            {live ? "Ao vivo" : "Reconectando…"}
+          </span>
+        )}
         <p className="hidden items-center gap-3 text-xs sm:flex" aria-label="Legenda de tempo" data-tour="kds-legenda">
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#16845b]" /> &lt; 10 min</span>
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#e0a43a]" /> &lt; 20 min</span>

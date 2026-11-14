@@ -1,6 +1,7 @@
 "use client";
 
 // Engine real (lojas com is_demo = false): Supabase com RLS e Realtime. Mesmo formato de dados da engine demo.
+// Cada hook abre o próprio canal (nome único): o cliente Supabase reaproveita canal de mesmo nome já inscrito.
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import { ORDER_SELECT, PRODUCT_SELECT, categoryFromRow, orderFromRow, productFromRow } from "@/lib/supabase/mappers";
@@ -26,7 +27,7 @@ export function useRemoteMenu(tenantId: string | undefined, enabled: boolean): R
     };
     void load();
     const ch = sb
-      .channel(`menu:${tenantId}`)
+      .channel(`menu:${tenantId}:${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `tenant_id=eq.${tenantId}` }, () => void load())
       .subscribe();
     return () => {
@@ -69,8 +70,14 @@ export function useRemoteOrders(tenantId: string | undefined, enabled: boolean, 
       if (isNew) onNewRef.current?.(o);
     };
     void snapshot();
-    const ch = sb
-      .channel(`orders:${tenantId}`)
+    // O Realtime aplica RLS com o JWT do usuário: sem ele o canal entra como anônimo e não recebe pedidos.
+    let ch: ReturnType<typeof sb.channel> | null = null;
+    void sb.auth.getSession().then(async ({ data }) => {
+      if (!alive) return;
+      await sb.realtime.setAuth(data.session?.access_token ?? null);
+      if (!alive) return;
+      ch = sb
+      .channel(`orders:${tenantId}:${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `tenant_id=eq.${tenantId}` }, (p) => void fetchOne((p.new as { id: string }).id, true))
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `tenant_id=eq.${tenantId}` }, (p) => void fetchOne((p.new as { id: string }).id, false))
       .subscribe((status) => {
@@ -80,9 +87,10 @@ export function useRemoteOrders(tenantId: string | undefined, enabled: boolean, 
         // Reconectou: reconcilia com o banco (eventos perdidos durante a queda).
         if (connected) void snapshot();
       });
+    });
     return () => {
       alive = false;
-      void sb.removeChannel(ch);
+      if (ch) void sb.removeChannel(ch);
     };
   }, [tenantId, enabled, onNewRef]);
   return state;
