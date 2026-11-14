@@ -1,26 +1,239 @@
 @import "tailwindcss";
 
+/*
+ * Duas camadas de marca, sem cruzamento:
+ *  --cz-*  ComandaZero (SaaS): landing, painel, PDV, KDS, super admin. Escopo .cz-saas-ui + [data-saas-theme].
+ *  --t-*   estabelecimento (white-label): cardápio, checkout e PWA da loja. Definidos por <TenantTheme>.
+ * Valores --cz-* vêm de _brandkit/.../04_Design_Tokens/comandazero-tokens.css.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Estabelecimento (padrão neutro; cada loja sobrescreve). */
+  --t-paper: #faf6f0;
+  --t-surface: #ffffff;
+  --t-ink: #2c1a12;
+  --t-muted: #6b5246;
+  --t-primary: #2c1a12;
+  --t-primary-ink: #faf6f0;
+  --t-secondary: #5e7153;
+  --t-accent: #c86d51;
+  --t-accent-text: #9c4a30;
+  --t-highlight: #d49b4b;
+  --t-line: #eadccd;
+}
+
+@layer base {
+:root {
+  --ui-surface: #ffffff;
+  --ui-surface-2: #f4f3f1;
+  --ui-text: #1c1917;
+  --ui-muted: #57534e;
+  --ui-border: rgb(0 0 0 / 0.14);
+  --ui-error: #b43838;
+  --ui-radius: 999px;
+}
+
+.cz-saas-ui,
+.cz-saas-ui[data-saas-theme="light"] {
+  --cz-navy: #0b1f40;
+  --cz-gold: #d4af6b;
+  --cz-warm-white: #faf8f5;
+  --cz-charcoal: #2b2b2b;
+  --cz-soft-beige: #e8dcc8;
+  --cz-gold-text: #8a5c21;
+  --cz-bg: #faf8f5;
+  --cz-surface: #ffffff;
+  --cz-surface-2: #f3eee6;
+  --cz-text: #0b1f40;
+  --cz-muted: #526076;
+  --cz-border: #ded9d1;
+  --cz-primary: #0b1f40;
+  --cz-primary-text: #ffffff;
+  --cz-accent: #d4af6b;
+  --cz-accent-text: #0b1f40;
+  --cz-highlight-text: #8a5c21;
+  --cz-success: #16845b;
+  --cz-warning: #a96116;
+  --cz-error: #b43838;
+  --cz-info: #2563a6;
+  --cz-focus: #2563a6;
+  --cz-radius-card: 14px;
+  --cz-radius-control: 10px;
+  color-scheme: light;
+  background: var(--cz-bg);
+  color: var(--cz-text);
+  --ui-surface: var(--cz-surface);
+  --ui-surface-2: var(--cz-surface-2);
+  --ui-text: var(--cz-text);
+  --ui-muted: var(--cz-muted);
+  --ui-border: var(--cz-border);
+  --ui-error: var(--cz-error);
+  --ui-radius: var(--cz-radius-control);
+}
+
+.cz-saas-ui[data-saas-theme="dark"] {
+  --cz-bg: #08162d;
+  --cz-surface: #132747;
+  --cz-surface-2: #1b3156;
+  --cz-text: #faf8f5;
+  --cz-muted: #c5cbd5;
+  --cz-border: #354762;
+  --cz-primary: #d4af6b;
+  --cz-primary-text: #08162d;
+  --cz-accent: #e8dcc8;
+  --cz-accent-text: #08162d;
+  --cz-highlight-text: #e3c58c;
+  --cz-focus: #8fb8ff;
+  color-scheme: dark;
+}
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-montserrat), var(--font-inter), system-ui, sans-serif;
+  /* Títulos das lojas: modernos (Space Grotesk) ou serifados artesanais (Playfair). */
+  --font-display: var(--font-display-sans), var(--font-inter), sans-serif;
+  --font-serif: var(--font-display-serif), Georgia, serif;
+
+  /* SaaS ComandaZero */
+  --color-brand: var(--cz-primary);
+  --color-brand-ink: var(--cz-primary-text);
+  --color-brand-accent: var(--cz-accent);
+  --color-cz-navy: var(--cz-navy);
+  --color-cz-gold: var(--cz-gold);
+  --color-cz-gold-text: var(--cz-highlight-text);
+  --color-cz-beige: var(--cz-soft-beige);
+  --color-cz-bg: var(--cz-bg);
+  --color-cz-surface: var(--cz-surface);
+  --color-cz-surface-2: var(--cz-surface-2);
+  --color-cz-text: var(--cz-text);
+  --color-cz-muted: var(--cz-muted);
+  --color-cz-border: var(--cz-border);
+  --color-cz-success: var(--cz-success);
+  --color-cz-warning: var(--cz-warning);
+  --color-cz-error: var(--cz-error);
+  --color-cz-info: var(--cz-info);
+  --color-ui-surface: var(--ui-surface);
+  --color-ui-surface-2: var(--ui-surface-2);
+  --color-ui-text: var(--ui-text);
+  --color-ui-muted: var(--ui-muted);
+  --color-ui-border: var(--ui-border);
+  --color-ui-error: var(--ui-error);
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  --color-paper: var(--t-paper);
+  --color-surface: var(--t-surface);
+  --color-ink: var(--t-ink);
+  --color-muted: var(--t-muted);
+  --color-primary: var(--t-primary);
+  --color-primary-ink: var(--t-primary-ink);
+  --color-secondary: var(--t-secondary);
+  --color-accent: var(--t-accent);
+  --color-accent-text: var(--t-accent-text);
+  --color-highlight: var(--t-highlight);
+  --color-line: var(--t-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #faf8f5;
+  color: #0b1f40;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível nítido para teclado (WCAG 2.4.7 / 2.4.13). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.cz-saas-ui :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--cz-focus);
+}
+
+.tenant {
+  --ui-surface: var(--t-surface);
+  --ui-surface-2: color-mix(in srgb, var(--t-ink) 6%, var(--t-surface));
+  --ui-text: var(--t-ink);
+  --ui-muted: var(--t-muted);
+  --ui-border: var(--t-line);
+}
+
+.tenant :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--t-accent-text);
+}
+
+/* Títulos institucionais do SaaS. */
+.cz-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+@keyframes flash-new {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(234 88 12 / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(234 88 12 / 0.55);
+  }
+}
+.flash-new {
+  animation: flash-new 1s ease-in-out 6;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* Cupom térmico: só o cupom aparece na impressão. */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 0;
+  }
 }
