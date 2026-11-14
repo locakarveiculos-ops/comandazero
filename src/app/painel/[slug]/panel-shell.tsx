@@ -18,6 +18,8 @@ import {
   Palette,
   Plug,
   Store,
+  Users,
+  Wallet,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -26,36 +28,49 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useState, type ReactNode } from "react";
 import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/brand-switcher";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
-import { useOrderAlerts } from "@/components/painel/use-panel";
+import { useOrderAlerts, useRemoteOrderAlert } from "@/components/painel/use-panel";
 import { Skeleton } from "@/components/ui";
 import { HelpButton, WelcomeTour } from "@/components/training/help-button";
 import { TourFromQuery } from "@/components/training/training-center";
-import { useDb, useOrders } from "@/lib/repositories";
+import { useDb } from "@/lib/repositories";
+import { useStoreOrders } from "@/lib/repositories/engine";
 import { mutate } from "@/lib/repositories/store";
 import { useClientValue } from "@/lib/use-client";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "", label: "Dashboard", icon: BarChart3 },
-  { href: "/pedidos", label: "Pedidos", icon: ListOrdered, badge: true },
-  { href: "/pdv", label: "PDV Balcão", icon: MonitorSmartphone },
-  { href: "/mesas", label: "Mesas", icon: UtensilsCrossed },
-  { href: "/kds", label: "KDS Cozinha", icon: ChefHat },
-  { href: "/cardapio", label: "Cardápio & estoque", icon: LayoutGrid },
-  { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart },
-  { href: "/aparencia", label: "Marca do app", icon: Palette },
-  { href: "/integracoes", label: "Integrações", icon: Plug },
-  { href: "/treinamento", label: "Central de treinamento", icon: GraduationCap },
+// Papéis que veem cada item (espelha PAGE_PERMISSION do servidor; o servidor é quem bloqueia de fato).
+const ALL: Role[] = ["owner", "manager", "cashier", "waiter", "kitchen"];
+// realOnly: telas que só existem para loja real (equipe e cobrança não fazem sentido na demonstração).
+const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolean; roles: Role[]; realOnly?: boolean }[] = [
+  { href: "", label: "Dashboard", icon: BarChart3, roles: ALL },
+  { href: "/pedidos", label: "Pedidos", icon: ListOrdered, badge: true, roles: ALL },
+  { href: "/pdv", label: "PDV Balcão", icon: MonitorSmartphone, roles: ["owner", "manager", "cashier"] },
+  { href: "/mesas", label: "Mesas", icon: UtensilsCrossed, roles: ["owner", "manager", "cashier", "waiter"] },
+  { href: "/kds", label: "KDS Cozinha", icon: ChefHat, roles: ALL },
+  { href: "/cardapio", label: "Cardápio", icon: LayoutGrid, roles: ["owner", "manager"] },
+  { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart, roles: ["owner", "manager"] },
+  { href: "/aparencia", label: "Marca do app", icon: Palette, roles: ["owner", "manager"] },
+  { href: "/integracoes", label: "Integrações", icon: Plug, roles: ["owner", "manager"] },
+  { href: "/equipe", label: "Equipe", icon: Users, roles: ["owner"], realOnly: true },
+  { href: "/assinatura", label: "Assinatura", icon: Wallet, roles: ["owner"], realOnly: true },
+  { href: "/treinamento", label: "Central de treinamento", icon: GraduationCap, roles: ALL },
 ];
+
+type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen";
+export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null; platformAdmin: boolean; readOnly?: boolean };
 
 const COLLAPSE_KEY = "cz-sidebar-collapsed";
 
-export function PanelShell({ slug, children }: { slug: string; children: ReactNode }) {
+export function PanelShell({ slug, children, access, banner, stores }: { slug: string; children: ReactNode; access: PanelAccess; banner?: ReactNode; stores?: { slug: string; name: string }[] | null }) {
   const path = usePathname();
   const { tenant, notFound } = useStoreTenant(slug);
-  const orders = useOrders(tenant?.id);
+  // Loja real: pedido novo chega pelo Realtime (outro aparelho). Demo: pelo aviso entre abas (useOrderAlerts).
+  const onRemoteNew = useRemoteOrderAlert(tenant);
+  const { orders, live } = useStoreOrders(tenant, onRemoteNew);
   const soundOn = useDb((s) => s.soundOn);
-  const tenants = useDb((s) => s.tenants);
+  const localTenants = useDb((s) => s.tenants);
+  // Demonstração: lojas do navegador. Loja real: lojas da conta vindas do servidor (a atual sempre aparece).
+  const tenants = stores ? (stores.some((t) => t.slug === slug) ? stores : [{ slug, name: slug }, ...stores]) : localTenants;
   const theme = useSaasTheme();
   const [open, setOpen] = useState(false);
   const stored = useClientValue(() => localStorage.getItem(COLLAPSE_KEY) === "1", false);
@@ -101,7 +116,7 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
 
   const nav = (compact: boolean) => (
     <nav aria-label="Painel" className="grid gap-1">
-      {NAV.map((n) => {
+      {NAV.filter((n) => (access.isDemo ? !n.realOnly : !!access.role && n.roles.includes(access.role))).map((n) => {
         const href = base + n.href;
         const active = n.href ? path.startsWith(href) : path === base;
         return (
@@ -171,8 +186,16 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
           <img src={tenant.logo} alt="" className="size-9 rounded-full border border-cz-border object-cover" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold leading-tight">{tenant.name}</p>
-            <p className="truncate text-xs text-cz-muted">
-              Plano {tenant.plan} · {tenant.subdomain}
+            <p className="flex items-center gap-1.5 truncate text-xs text-cz-muted">
+              {access.isDemo ? (
+                <span className="rounded-full bg-[#f8ecdc] px-1.5 font-semibold text-[#7d4710]">Demonstração</span>
+              ) : (
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 font-semibold", live ? "bg-[#e3f3ec] text-[#0f6646]" : "bg-[#f8e4e4] text-[#8f2a2a]")} data-testid="conexao">
+                  <span className={cn("size-2 rounded-full", live ? "bg-cz-success" : "bg-cz-error")} aria-hidden />
+                  {live ? "Ao vivo" : "Reconectando…"}
+                </span>
+              )}
+              · {tenant.subdomain}
             </p>
           </div>
           <button
@@ -189,6 +212,7 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
           <ThemeToggle />
         </header>
         <main id="conteudo" className="min-w-0 p-4 sm:p-6">
+          {banner}
           <WelcomeTour slug={slug} />
           <Suspense>
             <TourFromQuery slug={slug} />

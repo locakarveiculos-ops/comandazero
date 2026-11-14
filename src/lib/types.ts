@@ -54,6 +54,8 @@ export type Tenant = {
   active: boolean;
   createdAt: string;
   loyalty: { enabled: boolean; goal: number; reward: string; categoryIds: string[]; cashbackPct: number };
+  /** Loja de demonstração: dados só no navegador. Lojas reais (false) usam o Supabase. */
+  isDemo?: boolean;
 };
 
 export type OptionChoice = { id: string; name: string; price: number };
@@ -152,6 +154,8 @@ export type Order = {
   updatedAt: string;
   history: { status: OrderStatus; at: string }[];
   seen: boolean;
+  /** Token de acompanhamento (pedidos de loja real; vai na URL do cliente). */
+  trackToken?: string;
 };
 
 export type TableState = "livre" | "ocupada" | "conta";

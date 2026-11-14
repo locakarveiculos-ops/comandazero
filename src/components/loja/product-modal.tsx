@@ -92,7 +92,7 @@ function ProductForm({ product, tenant, onAdd, confirmLabel }: { product: Produc
 
   return (
     <div className="flex flex-col">
-      <div className="relative aspect-[16/9] w-full shrink-0 bg-stone-200 sm:aspect-[2/1]">
+      <div className="relative aspect-[16/9] max-h-[40vh] w-full shrink-0 bg-stone-200 sm:aspect-[2/1]">
         <img src={product.image} alt="" className="size-full object-cover" />
       </div>
       <div className="grid gap-5 p-5">

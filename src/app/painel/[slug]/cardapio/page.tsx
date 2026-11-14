@@ -8,14 +8,16 @@ import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { Badge, Button, Card, Field, Input, Modal, Select, Switch, Textarea } from "@/components/ui";
 import { fileToDataUrl } from "@/lib/image";
-import { addCategory, deleteProduct, saveProduct, toggleProduct, useMenu } from "@/lib/repositories";
-import type { OptionGroup, Product } from "@/lib/types";
+import { addCategory, deleteProduct, saveProduct } from "@/lib/repositories";
+import { isRemote, setProductAvailable, useStoreMenu } from "@/lib/repositories/engine";
+import { remoteSaveProduct, remoteUploadImage } from "@/lib/repositories/remote";
+import type { OptionGroup, Product, Tenant } from "@/lib/types";
 import { cn, money, uid } from "@/lib/utils";
 
 export default function CardapioPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const { categories, products } = useMenu(tenant?.id);
+  const { categories, products } = useStoreMenu(tenant);
   const [editing, setEditing] = useState<Product | null>(null);
   const [newCat, setNewCat] = useState("");
   const [filter, setFilter] = useState("all");
@@ -42,8 +44,10 @@ export default function CardapioPage() {
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="cz-heading text-2xl font-bold">Cardápio & estoque rápido</h1>
-          <p className="text-sm text-cz-muted">Pausar um item some do cardápio na hora, em todos os aparelhos. {paused > 0 && <b>{paused} pausado(s).</b>}</p>
+          <h1 className="cz-heading text-2xl font-bold">Cardápio</h1>
+          <p className="text-sm text-cz-muted">
+            {isRemote(tenant) ? "Pausar um item tira ele do cardápio na hora, em todos os aparelhos." : "Demonstração: pausar um item tira ele do cardápio neste navegador."} {paused > 0 && <b>{paused} pausado(s).</b>}
+          </p>
         </div>
         <Button variant="brand" onClick={() => setEditing(blank())} data-tour="cardapio-novo">
           <Plus className="size-4" aria-hidden /> Novo produto
@@ -90,7 +94,7 @@ export default function CardapioPage() {
                     checked={p.available}
                     label={`${p.available ? "Pausar" : "Reativar"} ${p.name}`}
                     onCheckedChange={() => {
-                      toggleProduct(p.id);
+                      void setProductAvailable(tenant, p.id, !p.available).catch((e: Error) => toast.error(e.message));
                       toast(p.available ? `“${p.name}” pausado: esgotou por hoje` : `“${p.name}” voltou ao cardápio`);
                     }}
                   />
@@ -110,20 +114,21 @@ export default function CardapioPage() {
         ))}
       </ul>
 
-      <ProductEditor product={editing} categories={categories} onClose={() => setEditing(null)} />
+      <ProductEditor product={editing} categories={categories} tenant={tenant} onClose={() => setEditing(null)} />
     </div>
   );
 }
 
-function ProductEditor({ product, categories, onClose }: { product: Product | null; categories: { id: string; name: string }[]; onClose: () => void }) {
+function ProductEditor({ product, categories, tenant, onClose }: { product: Product | null; categories: { id: string; name: string }[]; tenant: Tenant; onClose: () => void }) {
   return (
     <Modal open={!!product} onOpenChange={(v) => !v && onClose()} title={product?.name ? `Editar ${product.name}` : "Novo produto"} side="right">
-      {product && <EditorForm key={product.id} initial={product} categories={categories} onClose={onClose} />}
+      {product && <EditorForm key={product.id} initial={product} categories={categories} tenant={tenant} onClose={onClose} />}
     </Modal>
   );
 }
 
-function EditorForm({ initial, categories, onClose }: { initial: Product; categories: { id: string; name: string }[]; onClose: () => void }) {
+function EditorForm({ initial, categories, tenant, onClose }: { initial: Product; categories: { id: string; name: string }[]; tenant: Tenant; onClose: () => void }) {
+  const remote = isRemote(tenant);
   const [p, setP] = useState<Product>(initial);
   const [price, setPrice] = useState(initial.price.toFixed(2).replace(".", ","));
   const [uploading, setUploading] = useState(false);
@@ -135,7 +140,8 @@ function EditorForm({ initial, categories, onClose }: { initial: Product; catego
     if (!f) return;
     setUploading(true);
     try {
-      set("image", await fileToDataUrl(f));
+      // Loja real: Storage (servidor valida tipo e tamanho). Demo: imagem reduzida no navegador.
+      set("image", remote ? await remoteUploadImage(tenant.slug, f) : await fileToDataUrl(f));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -151,9 +157,14 @@ function EditorForm({ initial, categories, onClose }: { initial: Product; catego
       if (!g.name.trim() || !g.choices.length) return toast.error("Cada grupo precisa de nome e ao menos uma opção");
       if (g.min > g.max) return toast.error(`Em “${g.name}”, o mínimo não pode passar do máximo`);
     }
-    saveProduct({ ...p, price: value, name: p.name.trim(), cake: p.cake ? { ...p.cake, pricePerKg: value } : undefined });
-    toast.success(isNew ? "Produto criado" : "Alterações salvas");
-    onClose();
+    const product = { ...p, price: value, name: p.name.trim(), cake: p.cake ? { ...p.cake, pricePerKg: value } : undefined };
+    const done = () => {
+      toast.success(isNew ? "Produto criado" : "Alterações salvas");
+      onClose();
+    };
+    if (remote) return void remoteSaveProduct(tenant.id, product).then(done, (e: Error) => toast.error(e.message));
+    saveProduct(product);
+    done();
   };
 
   return (

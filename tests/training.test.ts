@@ -6,7 +6,7 @@ import { CHECKLIST, TOURS } from "@/lib/training/tours";
 
 // Garante que a Central de treinamento só referencia prints, rotas, âncoras e guias que existem de verdade.
 const ROOT = process.cwd();
-const APP_ROUTES = new Set(["/", "/entrar", "/super-admin", "/loja/{slug}", "/painel/{slug}", "/painel/{slug}/pedidos", "/painel/{slug}/pdv", "/painel/{slug}/mesas", "/painel/{slug}/kds", "/painel/{slug}/cardapio", "/painel/{slug}/fidelidade", "/painel/{slug}/aparencia", "/painel/{slug}/integracoes", "/painel/{slug}/treinamento"]);
+const APP_ROUTES = new Set(["/", "/entrar", "/super-admin", "/loja/{slug}", "/painel/{slug}", "/painel/{slug}/pedidos", "/painel/{slug}/pdv", "/painel/{slug}/mesas", "/painel/{slug}/kds", "/painel/{slug}/cardapio", "/painel/{slug}/fidelidade", "/painel/{slug}/aparencia", "/painel/{slug}/integracoes", "/painel/{slug}/treinamento", "/onboarding", "/painel/{slug}/equipe", "/painel/{slug}/assinatura"]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {

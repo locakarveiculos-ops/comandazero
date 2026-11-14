@@ -1,11 +1,11 @@
 # Cobertura de treinamento · v1.0.0
 
-Gerado em 2026-11-14T21:22:01.035Z a partir do commit `6d1edd0`, tenant demo `cafe-e-flor`.
+Gerado em 2026-11-14T23:20:41.340Z a partir do commit `6fd448d`, tenant demo `cafe-e-flor`.
 
-- Prints capturados: **33** (falhas: 0)
-- Artigos: **12**, todos com print: **sim**
-- Referências de print nos artigos: 42, sem arquivo: **0**
-- Rotas com print: 13
+- Prints capturados: **36** (falhas: 0)
+- Artigos: **16**, todos com print: **sim**
+- Referências de print nos artigos: 47, sem arquivo: **0**
+- Rotas com print: 16
 
 | Print | Rota | Estado | Viewport | Situação |
 |---|---|---|---|---|
@@ -39,8 +39,11 @@ Gerado em 2026-11-14T21:22:01.035Z a partir do commit `6d1edd0`, tenant demo `ca
 | integracoes/whatsapp | `/painel/cafe-e-flor/integracoes` | conexão do WhatsApp | desktop | capturado |
 | integracoes/testador | `/painel/cafe-e-flor/integracoes` | testador com lista de categorias | desktop | capturado |
 | integracoes/pagamentos | `/painel/cafe-e-flor/integracoes` | gateways e webhook | desktop | capturado |
-| super-admin/visao | `/super-admin` | visão da plataforma | desktop | capturado |
-| super-admin/onboarding | `/super-admin` | onboarding de loja | desktop | capturado |
+| super-admin/visao | `/super-admin` | visão da plataforma com dados reais | desktop | capturado |
+| super-admin/onboarding | `/onboarding` | passo 1 do assistente | desktop | capturado |
+| onboarding/aparencia | `/onboarding` | passo 4 com prévia de cores | desktop | capturado |
+| equipe/lista | `/painel/[loja]/equipe` | equipe com papéis | desktop | capturado |
+| assinatura/planos | `/painel/[loja]/assinatura` | teste grátis e planos | desktop | capturado |
 | entrar/login | `/entrar` | tela de entrar | desktop | capturado |
 
 Nenhum print pendente.

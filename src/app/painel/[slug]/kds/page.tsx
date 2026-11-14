@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-switcher";
 import { HelpButton } from "@/components/training/help-button";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
-import { setOrderStatus, useDb, useOrders } from "@/lib/repositories";
+import { useDb } from "@/lib/repositories";
+import { changeOrderStatus, isRemote, useStoreOrders } from "@/lib/repositories/engine";
+import { toast } from "sonner";
+import type { Tenant } from "@/lib/types";
 import { mutate } from "@/lib/repositories/store";
 import type { Order, OrderStatus } from "@/lib/types";
 import { useTick } from "@/lib/use-now";
@@ -28,7 +31,7 @@ const LEVEL = {
 export default function KdsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const orders = useOrders(tenant?.id);
+  const { orders, live } = useStoreOrders(tenant);
   const soundOn = useDb((s) => s.soundOn);
   const now = useTick();
   const [full, setFull] = useState(false);
@@ -54,6 +57,12 @@ export default function KdsPage() {
         <h1 className="cz-heading flex-1 text-xl font-bold">
           KDS · {tenant.name}
         </h1>
+        {isRemote(tenant) && (
+          <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", live ? "text-[#4ade80]" : "text-[#fca5a5]")} data-testid="conexao" role="status">
+            <span className={cn("size-2.5 rounded-full", live ? "bg-[#4ade80]" : "bg-[#fca5a5]")} aria-hidden />
+            {live ? "Ao vivo" : "Reconectando…"}
+          </span>
+        )}
         <p className="hidden items-center gap-3 text-xs sm:flex" aria-label="Legenda de tempo" data-tour="kds-legenda">
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#16845b]" /> &lt; 10 min</span>
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#e0a43a]" /> &lt; 20 min</span>
@@ -78,7 +87,7 @@ export default function KdsPage() {
               </h2>
               <ul className="grid flex-1 content-start gap-3 overflow-y-auto p-3 pt-0" aria-live="polite">
                 {list.map((o) => (
-                  <Ticket key={o.id} order={o} now={now} col={col} />
+                  <Ticket key={o.id} order={o} now={now} col={col} tenant={tenant} />
                 ))}
                 {!list.length && <li className="rounded-[10px] border border-dashed border-[#354762] p-6 text-center text-sm text-[#c5cbd5]">Nada aqui</li>}
               </ul>
@@ -90,7 +99,8 @@ export default function KdsPage() {
   );
 }
 
-function Ticket({ order, now, col }: { order: Order; now: number; col: (typeof COLS)[number] }) {
+function Ticket({ order, now, col, tenant }: { order: Order; now: number; col: (typeof COLS)[number]; tenant: Tenant }) {
+  const move = (status: OrderStatus) => void changeOrderStatus(tenant, order.id, status).catch((e: Error) => toast.error(e.message));
   const min = elapsedMinutes(order.createdAt, now);
   const level = waitLevel(min);
   return (
@@ -118,14 +128,14 @@ function Ticket({ order, now, col }: { order: Order; now: number; col: (typeof C
         </ul>
         <div className="mt-3 flex gap-2">
           {col.prev && (
-            <button type="button" onClick={() => setOrderStatus(order.id, col.prev!)} aria-label={`Voltar pedido ${order.number}`} className="grid size-12 place-items-center rounded-[10px] bg-[#e8dcc8] text-[#0b1f40] hover:brightness-95">
+            <button type="button" onClick={() => move(col.prev!)} aria-label={`Voltar pedido ${order.number}`} className="grid size-12 place-items-center rounded-[10px] bg-[#e8dcc8] text-[#0b1f40] hover:brightness-95">
               <Undo2 className="size-5" aria-hidden />
             </button>
           )}
           {col.next && (
             <button
               type="button"
-              onClick={() => setOrderStatus(order.id, col.status === "pronto" && order.mode === "delivery" ? "saiu" : col.next!)}
+              onClick={() => move(col.status === "pronto" && order.mode === "delivery" ? "saiu" : col.next!)}
               className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#0b1f40] text-base font-bold text-white hover:bg-[#132747]"
             >
               {col.status === "pronto" && order.mode === "delivery" ? "Saiu p/ entrega" : col.action} <ArrowRight className="size-5" aria-hidden />

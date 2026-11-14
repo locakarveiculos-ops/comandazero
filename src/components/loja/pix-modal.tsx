@@ -95,14 +95,17 @@ export function PixModal({
           <li>2. Confira o valor e o recebedor ({tenant.name}).</li>
           <li>3. A confirmação aparece aqui sozinha.</li>
         </ol>
-        <div className="rounded-2xl border border-dashed border-line p-3">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
-            <Zap className="size-3.5" aria-hidden /> Ambiente de demonstração
-          </p>
-          <Button variant="outline" className="w-full text-ink" onClick={simulate} loading={confirming} disabled={expired}>
-            <Check className="size-4" aria-hidden /> Simular confirmação do webhook
-          </Button>
-        </div>
+        {/* Só em loja de demonstração: em produção a confirmação vem do webhook assinado do gateway. */}
+        {tenant.isDemo !== false && (
+          <div className="rounded-2xl border border-dashed border-line p-3" data-testid="simulacao-pix">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
+              <Zap className="size-3.5" aria-hidden /> Ambiente de demonstração
+            </p>
+            <Button variant="outline" className="w-full text-ink" onClick={simulate} loading={confirming} disabled={expired}>
+              <Check className="size-4" aria-hidden /> Simular confirmação do webhook
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   );

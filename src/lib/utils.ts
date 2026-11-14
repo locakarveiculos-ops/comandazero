@@ -56,6 +56,14 @@ export function brNow(date = new Date()) {
   return { day, minutes: Number(get("hour")) * 60 + Number(get("minute")) };
 }
 
+/** Saudação pelo horário de Brasília: bom dia 5h–11h59, boa tarde 12h–17h59, boa noite 18h–4h59. */
+export function greeting(date = new Date()) {
+  const h = Math.floor(brNow(date).minutes / 60);
+  if (h >= 5 && h < 12) return "Bom dia";
+  if (h >= 12 && h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
 export function isOpenNow(hours: OpeningHour[], date = new Date()) {
   const { day, minutes } = brNow(date);
   return hours.some((h) => {

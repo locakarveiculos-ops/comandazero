@@ -1,0 +1,45 @@
+# Configuração do Supabase CLI (ambiente local) e referência da produção.
+# Produção: os mesmos valores são aplicados pela Management API / painel (ver docs/PASSOS_MANUAIS.md).
+project_id = "dazxugmfqkqixcbdocjf"
+
+[auth]
+site_url = "https://comandazero.vercel.app"
+additional_redirect_urls = ["https://comandazero.vercel.app/**", "http://localhost:3000/**", "http://localhost:3300/**"]
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+# Por enquanto sem confirmação obrigatória (pedido do dono). Religar ao configurar o SMTP próprio.
+enable_confirmations = false
+max_frequency = "60s"
+
+# Modelos em PT-BR. Os links usam token_hash e passam por /auth/callback (funcionam em qualquer aparelho).
+[auth.email.template.confirmation]
+subject = "Confirme sua conta na ComandaZero"
+content_path = "./supabase/templates/confirmacao.html"
+
+[auth.email.template.recovery]
+subject = "Crie uma nova senha · ComandaZero"
+content_path = "./supabase/templates/recuperacao.html"
+
+[auth.email.template.invite]
+subject = "Convite para a equipe · ComandaZero"
+content_path = "./supabase/templates/convite.html"
+
+[auth.email.template.magic_link]
+subject = "Seu link de acesso · ComandaZero"
+content_path = "./supabase/templates/link_magico.html"
+
+[auth.email.template.email_change]
+subject = "Confirme o novo e-mail · ComandaZero"
+content_path = "./supabase/templates/troca_email.html"
+
+# SMTP próprio (Resend). Sem ele o Supabase manda no máximo 2 e-mails/hora e não aceita modelos personalizados.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "nao-responda@comandazero.com.br"
+# sender_name = "ComandaZero"

@@ -1,4 +1,14 @@
+import { existsSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+
+const adminEnv: Record<string, string> = existsSync(".env.local")
+  ? Object.fromEntries(
+      readFileSync(".env.local", "utf8")
+        .split(/\r?\n/)
+        .filter((l) => /^(E2E_ADMIN_|SUPABASE_SERVICE_ROLE_KEY=|NEXT_PUBLIC_SUPABASE_URL=)/.test(l))
+        .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
+    )
+  : {};
 
 const errorsOf = (page: Page) => {
   const errs: string[] = [];
@@ -31,7 +41,7 @@ test.describe("Rotas e marca", () => {
     await expect(page.getByRole("link", { name: /Ver loja demo: Café e Flor/ })).toHaveAttribute("href", "/loja/cafe-e-flor");
     await expect(page.getByRole("link", { name: /Burger Station/ })).toHaveAttribute("href", "/loja/burger-station");
     const before = await page.locator("#economia").getByText(/por mês ·/).textContent();
-    await page.getByLabel("Pedidos por mês").fill("1200");
+    await page.getByLabel("Vendas mensais pelo delivery").fill("90000");
     await expect(page.locator("#economia").getByText(/por mês ·/)).not.toHaveText(before!);
   });
 
@@ -263,15 +273,34 @@ test.describe("Retaguarda", () => {
     await expect(page.frameLocator('iframe[title="Prévia do e-mail"]').getByText(/Recebemos seu pedido/)).toBeVisible();
   });
 
-  test("Super Admin: cria tenant e a loja nova abre com cardápio", async ({ page }) => {
-    await page.goto("/super-admin");
-    await page.getByRole("button", { name: "Criar novo estabelecimento" }).click();
-    await page.getByLabel("Nome do estabelecimento").fill("Padaria Pão Dourado");
-    await page.getByRole("button", { name: "Criar e publicar" }).click();
-    await expect(page.getByRole("cell", { name: /Padaria Pão Dourado/ })).toBeVisible();
-    await page.goto("/loja/padaria-pao-dourado");
+  test("Super Admin: dados reais e criação de loja real pelo onboarding", async ({ page, request }) => {
+    // Super Admin exige admin da plataforma (credenciais de teste no .env.local).
+    test.skip(!adminEnv.E2E_ADMIN_EMAIL, "admin de teste ausente");
+    await page.goto("/entrar?next=%2Fsuper-admin");
+    await page.getByLabel("E-mail").fill(adminEnv.E2E_ADMIN_EMAIL);
+    await page.getByLabel("Senha", { exact: true }).fill(adminEnv.E2E_ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "Entrar", exact: true }).click();
+    await page.waitForURL("**/super-admin", { timeout: 15000 });
+    await expect(page.getByRole("table")).toContainText("loja-teste-p0".replace(/-/g, ""));
+    await expect(page.getByRole("button", { name: /Restaurar demo/ })).toHaveCount(0);
+
+    const slug = `padaria-e2e-${Date.now().toString().slice(-6)}`;
+    await page.getByRole("link", { name: "Criar novo estabelecimento" }).click();
+    await page.waitForURL("**/onboarding");
+    await page.getByLabel("Nome da loja").fill("Padaria Pão Dourado");
+    await page.getByLabel("Endereço do cardápio").fill(slug);
+    await page.getByLabel("WhatsApp da loja").fill("19999990000");
+    await page.getByLabel("Cidade").fill("Indaiatuba");
+    for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Continuar" }).click();
+    await page.getByRole("button", { name: "Criar loja" }).click();
+    await page.waitForURL(`**/painel/${slug}?bemvindo=1`, { timeout: 20000 });
+    await page.goto(`/loja/${slug}`);
     await expect(page.getByRole("heading", { level: 1, name: "Padaria Pão Dourado" })).toBeVisible();
     await expect(page.getByText("Cappuccino Artesanal").first()).toBeVisible();
+
+    // Limpeza: apaga a loja de teste (cascata em cardápio, mesas, membros e assinatura).
+    const headers = { apikey: adminEnv.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${adminEnv.SUPABASE_SERVICE_ROLE_KEY}` };
+    await request.delete(`${adminEnv.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/tenants?slug=eq.${slug}`, { headers });
   });
 
   test("Login: validação e acessível", async ({ page }) => {

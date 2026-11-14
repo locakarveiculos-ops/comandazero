@@ -209,16 +209,22 @@ end $$;
 drop trigger if exists orders_number on orders;
 create trigger orders_number before insert on orders for each row execute function next_order_number();
 
+create or replace function touch_order() returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
 create or replace function log_order_status() returns trigger language plpgsql as $$
 begin
   if tg_op = 'INSERT' or new.status is distinct from old.status then
     insert into order_events (tenant_id, order_id, status) values (new.tenant_id, new.id, new.status);
   end if;
-  new.updated_at := now();
-  return new;
+  return null;
 end $$;
 drop trigger if exists orders_status_log on orders;
-create trigger orders_status_log before insert or update on orders for each row execute function log_order_status();
+drop trigger if exists orders_touch on orders;
+create trigger orders_touch before update on orders for each row execute function touch_order();
+create trigger orders_status_log after insert or update on orders for each row execute function log_order_status();
 
 -- ---------------------------------------------------------------- mesas, cupons, fidelidade
 create table if not exists dining_tables (

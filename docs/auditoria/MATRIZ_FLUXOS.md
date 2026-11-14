@@ -1,28 +1,27 @@
 # Matriz de fluxos · ComandaZero
 
-Cada linha é uma jornada completa. "Teste" aponta o teste automatizado que comprova o comportamento hoje.
-Importante: **todo o estado de pedidos, mesas e cardápio vive no `localStorage` do navegador** (engine demo). O "tempo real" é `BroadcastChannel`: funciona entre abas do mesmo navegador, **não entre aparelhos**.
+Atualizada em 14/11/2026 (branch `p0-producao`). Lojas reais usam o Supabase (pedidos, cardápio, fotos, Realtime).
+As lojas de demonstração (`cafe-e-flor`, `burger-station`) seguem com dados no navegador e botões de simulação, marcadas como "Demonstração".
 
-| Jornada | Status | Evidência | O que é simulado |
+| Jornada | Status | Evidência | Observação |
 |---|---|---|---|
-| Cliente: cardápio → opções/adicionais → carrinho → Pix → acompanhamento | MOCK/DEMONSTRAÇÃO | `e2e/fluxos.spec.ts` › produtos com foto e complementos; Pix com QR | Pix: BR Code válido (CRC16 testado), confirmação por botão "Simular confirmação do webhook" |
-| Pedido do cliente chega no painel com som e notificação | REAL/TESTADO (mesmo navegador) | › Pix com QR … → painel → KDS | Sincronização entre aparelhos ausente |
-| KDS: fila → preparando → pronto, status volta ao cliente | REAL/TESTADO (mesmo navegador) | › mesmo teste | — |
-| Mesa via QR (`?mesa=04`) e pedir conta | REAL/TESTADO (local) | › mesa via QR | Mesa sem token de segurança |
-| Encomenda de bolo: peso, frase, data mínima, sinal 50% via Pix | REAL/TESTADO (local) | › encomenda de bolo | Sinal via Pix simulado |
-| Delivery: CEP (ViaCEP), bairro e taxa | REAL/TESTADO | › delivery com CEP (ViaCEP respondido localmente no teste) | — |
-| PDV: F2 código, F4, pagamento misto, troco, cupom 58/80 mm | REAL/TESTADO (local) | › PDV: atalho F2… | Cupom não fiscal; sem caixa por operador |
-| Mesas: abrir, lançar, transferir, QR para impressão | REAL/TESTADO (local) | › Mesas: abrir, lançar… | — |
-| Pausar produto some da loja | REAL/TESTADO (mesmo navegador) | › Cardápio: pausar item | — |
-| Gatilho WhatsApp "pedido recebido" com botões | REAL/TESTADO | › WhatsApp: gatilho de pedido | Envio interceptado no teste; em produção usa o canal real da loja |
-| Robô do WhatsApp (menu, categoria, produto, atendente) | REAL/TESTADO (unitário) | `tests/whatsapp.test.ts` | Catálogo do robô vem da semente do servidor, não das edições do lojista |
-| Webhook WhatsApp: assinatura, replay, dedupe, fromMe | REAL/TESTADO (unitário) | `tests/whatsapp.test.ts` | Dedupe em memória do servidor (perde em reinício) |
-| Pagamento real por gateway | AUSENTE | — | Adaptadores montam a requisição oficial, nenhuma cobrança é feita |
-| Super Admin: criar loja com cardápio modelo | REAL/TESTADO (local) | › Super Admin: cria tenant | Sem login; loja existe só no navegador |
-| Login / cadastro / recuperar senha | PARCIAL | › Login: validação | Supabase Auth real; papéis e proteção de rotas ausentes |
-| Isolamento entre lojas no banco (RLS) | REAL/TESTADO | Teste com chave anon contra o Supabase (relatório desta rodada) | App ainda não usa o banco |
-| White-label: manifest e marca por loja | REAL/TESTADO | › white-label | — |
-| Acessibilidade WCAG 2.2 AA | REAL/TESTADO | `e2e/acessibilidade.spec.ts` (axe em 21 telas claro/escuro, toque ≥ 44 px, teclado) | Leitor de tela e zoom 200% não testados manualmente |
-| Tour guiado e central de treinamento | REAL/TESTADO | `e2e/treinamento.spec.ts`, `tests/training.test.ts` | Progresso no navegador (modo demo) |
-| Offline | PARCIAL | `public/sw.js` + `offline.html` | Sem fila local; checkout exige conexão |
-| Estoque/ficha técnica/CMV, caixa por turno, estações KDS, entregador, totem | AUSENTE | — | — |
+| Cadastro → aceite dos Termos → onboarding em 5 passos → loja no ar | REAL/TESTADO | `e2e/auth.spec.ts` (aceite gravado com versão), `e2e/fluxos.spec.ts` › onboarding | Confirmação de e-mail desligada a pedido; religar com SMTP (`docs/PASSOS_MANUAIS.md`) |
+| Link de e-mail (confirmação/recuperação) → `/auth/callback` | REAL/TESTADO | `e2e/auth.spec.ts` | Modelos PT-BR prontos em `supabase/templates/`; aplicar exige SMTP próprio |
+| Recuperar senha → `/redefinir-senha` | REAL/TESTADO (sem sessão) | `e2e/auth.spec.ts` | Envio limitado a 2 e-mails/hora até configurar SMTP |
+| Anônimo em painel de loja real ou Super Admin → `/entrar?next=` | REAL/TESTADO | `e2e/p0.spec.ts` | Demos continuam abertas para visitação |
+| Logado sem vínculo → 403 | REAL/TESTADO | `e2e/p0.spec.ts` | — |
+| Caixa vê PDV e não vê Cardápio, Equipe, Assinatura | REAL/TESTADO | `e2e/p0.spec.ts` | Bloqueio no servidor, não só no menu |
+| Pedido no celular → KDS do tablet em < 3 s → cliente vê "Na cozinha" | REAL/TESTADO | `e2e/p0.spec.ts` (medido ~0,2 s) | Supabase Realtime com JWT |
+| Preço adulterado / produto inexistente | REAL/TESTADO | `e2e/p0.spec.ts` (422) | Banco recalcula tudo |
+| Webhook de pagamento: sem assinatura 401, válido 200, repetido sem efeito | REAL/TESTADO | `e2e/p0.spec.ts` | Mercado Pago testado; demais gateways seguem o mesmo verificador |
+| Avaliação do cliente após entregue; média só com 10+ | REAL/TESTADO (banco) | validação SQL no `REPORT_P0.md` | Sem nota fictícia em loja real |
+| Equipe: adicionar conta existente, trocar papel, remover | REAL/TESTADO | `e2e/p0.spec.ts` | Convite por e-mail depende do limite de e-mails |
+| Assinatura: teste de 14 dias, aviso no painel, escolha de plano | REAL/TESTADO | `e2e/p0.spec.ts` | Cobrança Asaas ativa com `ASAAS_API_KEY` |
+| Atraso > 7 dias → painel só leitura; pedidos seguem | REAL/TESTADO (banco) | validação SQL no `REPORT_P0.md` | — |
+| Super Admin: dados reais, suspender/reativar com histórico | REAL/TESTADO | `e2e/p0.spec.ts` | — |
+| Loja inexistente → 404; robots, sitemap, JSON-LD | REAL/TESTADO | `e2e/seo.spec.ts` | — |
+| Landing: sem rolagem lateral em 1440/1024/390, alvos ≥ 44 px, sem erro de console | REAL/TESTADO | `e2e/landing.spec.ts` | — |
+| PDV, mesas, fidelidade da loja real | PARCIAL | `e2e/fluxos.spec.ts` (demo) | Mesas e fidelidade ainda gravam no navegador para loja real (P1) |
+| Pix dinâmico com confirmação automática para pedidos | AUSENTE em loja real | — | Loja real recebe pagamento presencial; aviso no checkout (`pix-presencial`) |
+| Acessibilidade WCAG 2.2 AA | REAL/TESTADO | `e2e/acessibilidade.spec.ts` | Leitor de tela e zoom 200% não testados manualmente |
+| Central de treinamento com prints reais | REAL/TESTADO | `tests/training.test.ts`, `e2e/treinamento.spec.ts` | Inclui Onboarding, Equipe, Assinatura e Avaliações |

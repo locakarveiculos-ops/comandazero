@@ -15,7 +15,8 @@ import { Checkout } from "@/components/loja/checkout";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
-import { addToCart, requestBill, useCart, useMenu, useOrders, useDb } from "@/lib/repositories";
+import { addToCart, requestBill, useCart, useOrders, useDb } from "@/lib/repositories";
+import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
 import type { OrderMode, Product } from "@/lib/types";
 import { MODE_LABEL, STATUS_LABEL, cartSubtotal, cn, isOpenNow, money, todayHours } from "@/lib/utils";
 
@@ -31,10 +32,11 @@ export function StorePage({ slug }: { slug: string }) {
   const params = useSearchParams();
   const table = params.get("mesa")?.replace(/\D/g, "").padStart(2, "0").slice(-2) || undefined;
   const { tenant, notFound } = useStoreTenant(slug);
-  const { categories, products } = useMenu(tenant?.id);
+  const { categories, products } = useStoreMenu(tenant);
   const cart = useCart(tenant?.id ?? "");
   const customer = useDb((s) => s.customer);
-  const myOrders = useOrders(tenant?.id).filter((o) => customer && o.customer.phone.endsWith(customer.phone.replace(/\D/g, "").slice(-11)) && !["entregue", "cancelado"].includes(o.status));
+  // Pedidos recentes deste aparelho: na loja real ficam guardados com o token (ver checkout).
+  const myOrders = useOrders(isRemote(tenant) ? undefined : tenant?.id).filter((o) => customer && o.customer.phone.endsWith(customer.phone.replace(/\D/g, "").slice(-11)) && !["entregue", "cancelado"].includes(o.status));
 
   const [mode, setMode] = useState<OrderMode>(table ? "mesa" : "retirada");
   const [query, setQuery] = useState("");
@@ -124,11 +126,12 @@ export function StorePage({ slug }: { slug: string }) {
           <div className="relative rounded-3xl border border-line bg-surface p-5 shadow-xl shadow-black/10">
             <div className="flex flex-wrap items-start gap-4">
               <img src={tenant.logo} alt={`Logo ${tenant.name}`} className="-mt-12 size-24 shrink-0 rounded-full border-4 border-surface bg-surface object-cover shadow-lg" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[10rem] flex-1">
                 <h1 className={cn("text-3xl font-bold leading-tight text-ink sm:text-4xl", displayFont(tenant))}>{tenant.name}</h1>
                 <p className="mt-0.5 text-sm text-muted">{tenant.tagline}</p>
               </div>
-              <div className="flex items-center gap-2">
+              {/* Celular: ajuda e instalar ficam numa linha própria para não espremer o nome da loja. */}
+              <div className="flex basis-full items-center gap-2 sm:basis-auto">
                 <StoreHelp slug={slug} />
                 <InstallApp tenant={tenant} />
               </div>
@@ -142,11 +145,14 @@ export function StorePage({ slug }: { slug: string }) {
               <li className="flex items-center gap-1.5">
                 <Clock className="size-4 text-muted" aria-hidden /> ~{tenant.prepMinutes} min de preparo
               </li>
-              <li className="flex items-center gap-1.5">
+              {/* Nota real só com 10+ avaliações de pedidos entregues (o banco devolve 0 abaixo disso). */}
+              {tenant.ratingCount >= 10 && tenant.rating > 0 && (
+                <li className="flex items-center gap-1.5">
                 <Star className="size-4 fill-highlight text-highlight" aria-hidden />
                 <b>{tenant.rating.toLocaleString("pt-BR")}</b>
                 <span className="text-muted">({tenant.ratingCount} avaliações)</span>
               </li>
+              )}
               <li className="flex items-center gap-1.5">
                 <MapPin className="size-4 text-muted" aria-hidden />
                 <span>{tenant.address.complement ?? `${tenant.address.street}, ${tenant.address.district}`}</span>

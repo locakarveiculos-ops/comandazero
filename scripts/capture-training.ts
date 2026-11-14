@@ -7,13 +7,22 @@
  * Saída: public/training/screenshots/<versão>/**, docs/training/SCREENSHOT_MANIFEST.json, docs/training/COVERAGE.md
  */
 import { execSync, spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { chromium, type Page } from "@playwright/test";
 import sharp from "sharp";
 import { ARTICLES, TRAINING_VERSION } from "../src/lib/training/articles";
 
 const PORT = 3400;
+// Contas de teste (loja real "loja-teste-p0") para as telas que exigem login. Nunca versionadas.
+const ENV: Record<string, string> = existsSync(".env.local")
+  ? Object.fromEntries(
+      readFileSync(".env.local", "utf8")
+        .split(/\r?\n/)
+        .filter((l) => /^E2E_(ADMIN|OWNER)_/.test(l))
+        .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
+    )
+  : {};
 const BASE = process.env.CAPTURE_BASE_URL || `http://localhost:${PORT}`;
 const OUT = `public/training/screenshots/${TRAINING_VERSION}`;
 const DESKTOP = { width: 1440, height: 900 };
@@ -252,14 +261,44 @@ async function main() {
       await save(page, "integracoes/pagamentos", `${S}/integracoes`, "gateways e webhook", "desktop");
     });
 
-    console.log("Super Admin e acesso");
+    // Telas que exigem login: contexto separado, para não misturar com a demonstração aberta.
+    const loginAs = async (who: "ADMIN" | "OWNER", next: string) => {
+      const c = await browser.newContext({ viewport: DESKTOP, locale: "pt-BR", timezoneId: "America/Sao_Paulo", deviceScaleFactor: 1 });
+      const p = await c.newPage();
+      await p.goto(`${BASE}/entrar?next=${encodeURIComponent(next)}`);
+      await p.getByLabel("E-mail").fill(ENV[`E2E_${who}_EMAIL`]);
+      await p.getByLabel("Senha", { exact: true }).fill(ENV[`E2E_${who}_PASSWORD`]);
+      await p.getByRole("button", { name: "Entrar", exact: true }).click();
+      await p.waitForURL((u) => !u.pathname.startsWith("/entrar"), { timeout: 20000 });
+      await p.waitForLoadState("networkidle");
+      return { c, p };
+    };
+
+    console.log("Super Admin, onboarding, equipe e assinatura");
     await step("super-admin", async () => {
-      await go("/super-admin");
-      await save(page, "super-admin/visao", "/super-admin", "visão da plataforma", "desktop");
-      await page.getByRole("button", { name: "Criar novo estabelecimento" }).click();
-      await page.getByLabel("Nome do estabelecimento").fill("Padaria Demo");
-      await save(page, "super-admin/onboarding", "/super-admin", "onboarding de loja", "desktop");
-      await page.keyboard.press("Escape");
+      if (!ENV.E2E_ADMIN_EMAIL) throw new Error("E2E_ADMIN_EMAIL ausente no .env.local");
+      const { c, p } = await loginAs("ADMIN", "/super-admin");
+      await save(p, "super-admin/visao", "/super-admin", "visão da plataforma com dados reais", "desktop");
+      await p.goto(`${BASE}/onboarding`);
+      await p.getByLabel("Nome da loja").fill("Padaria Pão Dourado");
+      await p.getByLabel("WhatsApp da loja").fill("19900000000");
+      await p.getByLabel("Cidade").fill("Indaiatuba");
+      await save(p, "super-admin/onboarding", "/onboarding", "passo 1 do assistente", "desktop");
+      await p.getByRole("button", { name: "Continuar" }).click();
+      await p.getByRole("button", { name: "Continuar" }).click();
+      await p.getByRole("button", { name: "Continuar" }).click();
+      await save(p, "onboarding/aparencia", "/onboarding", "passo 4 com prévia de cores", "desktop");
+      await c.close();
+    });
+    await step("equipe-assinatura", async () => {
+      if (!ENV.E2E_OWNER_EMAIL) throw new Error("E2E_OWNER_EMAIL ausente no .env.local");
+      const { c, p } = await loginAs("OWNER", "/painel/loja-teste-p0/equipe");
+      await p.evaluate(() => document.fonts.ready);
+      await save(p, "equipe/lista", "/painel/[loja]/equipe", "equipe com papéis", "desktop");
+      await p.goto(`${BASE}/painel/loja-teste-p0/assinatura`);
+      await p.waitForLoadState("networkidle");
+      await save(p, "assinatura/planos", "/painel/[loja]/assinatura", "teste grátis e planos", "desktop");
+      await c.close();
     });
     await step("entrar", async () => {
       await go("/entrar");
