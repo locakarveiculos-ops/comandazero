@@ -16,7 +16,7 @@ export function errorResponse(e: unknown) {
   const status = typeof (e as { status?: unknown })?.status === "number" ? (e as { status: number }).status : 500;
   // Mensagens de HttpError são escritas por nós (seguras para o usuário); erros inesperados ficam só no log.
   const ours = e instanceof HttpError || (status >= 400 && status < 500);
-  const safe = ours ? (e as Error).message : "Falha ao falar com o WhatsApp. Tente de novo em instantes.";
+  const safe = ours ? (e as Error).message : "Falha inesperada. Tente de novo em instantes.";
   if (!ours) console.error("[api]", (e as Error)?.message);
   return json({ error: safe }, status >= 400 && status < 600 ? status : 500);
 }

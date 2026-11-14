@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
-import { PAGE_PERMISSION, requireTenant } from "@/lib/server/auth";
+import { PAGE_PERMISSION, can, requireTenant } from "@/lib/server/auth";
+import { getSubscription } from "@/lib/server/subscription";
 import { RemoteTenantProvider } from "@/components/loja/use-store-tenant";
+import { BillingBanner } from "@/components/painel/billing-banner";
 import { getRealTenant } from "@/lib/server/tenant";
 import { PanelShell } from "./panel-shell";
 
@@ -13,11 +15,16 @@ export default async function Layout({ children, params }: LayoutProps<"/painel/
   const page = path.replace(`/painel/${slug}`, "").split("/")[1] ?? "";
   const access = await requireTenant(slug, PAGE_PERMISSION[page] ?? "orders.view", path);
   const real = access.isDemo ? null : await getRealTenant(slug);
+  const sub = access.isDemo ? null : await getSubscription(access.id);
   return (
     <RemoteTenantProvider tenant={real}>
-    <PanelShell slug={slug} access={{ tenantId: access.id, isDemo: access.isDemo, role: access.role, platformAdmin: access.platformAdmin }}>
-      {children}
-    </PanelShell>
+      <PanelShell
+        slug={slug}
+        access={{ tenantId: access.id, isDemo: access.isDemo, role: access.role, platformAdmin: access.platformAdmin, readOnly: !!sub?.readOnly }}
+        banner={page === "assinatura" ? null : <BillingBanner slug={slug} sub={sub} canPay={can(access.role, "billing.manage")} />}
+      >
+        {children}
+      </PanelShell>
     </RemoteTenantProvider>
   );
 }
