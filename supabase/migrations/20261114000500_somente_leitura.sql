@@ -5,10 +5,15 @@
 
 create or replace function public.guard_read_only() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare t uuid;
+declare
+  t uuid;
+  -- Linha como jsonb: em tenants a chave é "id", nas demais "tenant_id" (acesso direto a new.campo falha na tabela errada).
+  r jsonb := to_jsonb(case when tg_op = 'DELETE' then old else new end);
 begin
   if coalesce(auth.role(), '') <> 'authenticated' then return coalesce(new, old); end if;
-  t := case when tg_table_name = 'tenants' then coalesce(new.id, old.id) else coalesce(new.tenant_id, old.tenant_id) end;
+  -- Loja nova ainda não tem assinatura: criar não é bloqueado.
+  if tg_table_name = 'tenants' and tg_op = 'INSERT' then return new; end if;
+  t := (case when tg_table_name = 'tenants' then r->>'id' else r->>'tenant_id' end)::uuid;
   if tenant_read_only(t) then
     raise exception 'SOMENTE_LEITURA' using errcode = 'P0001', hint = 'Regularize a assinatura para voltar a editar.';
   end if;

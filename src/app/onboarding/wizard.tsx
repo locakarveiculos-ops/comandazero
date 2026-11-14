@@ -101,7 +101,8 @@ export function OnboardingWizard({ defaultWhatsapp }: { defaultWhatsapp: string 
     if (err) {
       const code = err.message.split(":")[0];
       if (code === "SLUG_EM_USO" || code === "SLUG_INVALIDO") setStep(0);
-      return setError(ERRORS[code] ?? "Não foi possível criar a loja agora. Tente de novo.");
+      if (!ERRORS[code]) console.error("[onboarding]", err.message);
+      return setError(ERRORS[code] ?? "Não foi possível criar a loja agora. Tente de novo ou fale com o suporte.");
     }
     toast.success("Loja criada! Ela já está no ar.");
     window.location.assign(new URL(`/painel/${data as string}?bemvindo=1`, window.location.origin).href);
