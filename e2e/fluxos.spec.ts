@@ -41,7 +41,7 @@ test.describe("Rotas e marca", () => {
     await expect(page.getByRole("link", { name: /Ver loja demo: Café e Flor/ })).toHaveAttribute("href", "/loja/cafe-e-flor");
     await expect(page.getByRole("link", { name: /Burger Station/ })).toHaveAttribute("href", "/loja/burger-station");
     const before = await page.locator("#economia").getByText(/por mês ·/).textContent();
-    await page.getByLabel("Pedidos por mês").fill("1200");
+    await page.getByLabel("Vendas mensais pelo delivery").fill("90000");
     await expect(page.locator("#economia").getByText(/por mês ·/)).not.toHaveText(before!);
   });
 
