@@ -11,5 +11,5 @@ export default async function Painel() {
   const first = (data as { slug: string }[] | null)?.[0];
   if (first) redirect(`/painel/${first.slug}`);
   const { data: admin } = await sb.rpc("is_platform_admin");
-  redirect(admin ? "/super-admin" : "/painel/nova-loja");
+  redirect(admin ? "/super-admin" : "/onboarding");
 }

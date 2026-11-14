@@ -61,7 +61,7 @@ async function session(req: NextRequest, res: NextResponse) {
 export function needsLogin(pathname: string) {
   if (pathname === "/super-admin" || pathname.startsWith("/super-admin/")) return true;
   if (pathname === "/painel") return false; // a própria página decide (demo ou loja do usuário)
-  if (pathname === "/painel/nova-loja") return true;
+  if (pathname === "/onboarding" || pathname === "/painel/nova-loja") return true;
   const m = /^\/painel\/([^/]+)/.exec(pathname);
   return !!m && !DEMO_SLUGS.has(m[1]);
 }
@@ -75,7 +75,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
   const path = req.nextUrl.pathname;
-  if (!path.startsWith("/painel") && !path.startsWith("/super-admin") && path !== "/entrar") return NextResponse.next();
+  if (!path.startsWith("/painel") && !path.startsWith("/super-admin") && path !== "/entrar" && path !== "/onboarding") return NextResponse.next();
   // O layout do painel usa o caminho para conferir a permissão da página (não confia no cliente).
   const headers = new Headers(req.headers);
   headers.set("x-cz-path", path);
@@ -88,7 +88,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(to);
   }
   // Logado mas sem vínculo: 403 antes de a página começar a transmitir (o layout confere de novo, com o papel da página).
-  if (s.user && s.sb && needsLogin(path) && path !== "/painel/nova-loja") {
+  if (s.user && s.sb && needsLogin(path) && path !== "/painel/nova-loja" && path !== "/onboarding") {
     const slug = /^\/painel\/([^/]+)/.exec(path)?.[1];
     const allowed = slug
       ? await s.sb.rpc("my_tenants").then(({ data }) => ((data ?? []) as { slug: string }[]).some((t) => t.slug === slug) || s.sb!.rpc("is_platform_admin").then((r) => r.data === true))

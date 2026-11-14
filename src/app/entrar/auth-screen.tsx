@@ -101,7 +101,7 @@ export function AuthScreen() {
     });
     if (error) throw error;
     // Sem confirmação obrigatória a sessão já vem pronta: segue para criar a loja.
-    if (data.session) return window.location.assign(new URL("/painel/nova-loja", window.location.origin).href);
+    if (data.session) return window.location.assign(new URL("/onboarding", window.location.origin).href);
     setSent({ kind: "signup", text: `Enviamos um link de confirmação para ${email.trim()}. Abra o e-mail “Confirme sua conta na ComandaZero”.` });
     setCooldown(RESEND_SECONDS);
   };
@@ -213,7 +213,7 @@ export function AuthScreen() {
 
           {notice === "sem-loja" && (
             <p className="mt-6 rounded-[10px] bg-cz-info/10 p-3 text-sm">
-              Sua conta ainda não tem loja. <Link href="/painel/nova-loja" className="font-semibold underline">Criar minha loja</Link>
+              Sua conta ainda não tem loja. <Link href="/onboarding" className="font-semibold underline">Criar minha loja</Link>
             </p>
           )}
           {notice === "link-invalido" && (

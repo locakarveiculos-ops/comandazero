@@ -63,7 +63,7 @@ test.describe("Auth · cadastro", () => {
     await page.getByLabel("Senha", { exact: true }).fill("SenhaForte123!");
     await page.getByLabel(/Li e aceito/).check();
     await page.getByRole("button", { name: "Criar conta" }).click();
-    await page.waitForURL("**/painel/nova-loja", { timeout: 15000 });
+    await page.waitForURL("**/onboarding", { timeout: 15000 });
 
     const base = env.NEXT_PUBLIC_SUPABASE_URL;
     const headers = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };

@@ -23,7 +23,7 @@ export default async function Page() {
         <p className="text-cz-muted">
           Tudo certo, <b>{user.email}</b>. {hasStore ? "Sua conta já está ligada a uma loja." : "Agora falta só cadastrar a sua loja: leva uns 3 minutos."}
         </p>
-        <Link href={hasStore ? "/painel" : "/painel/nova-loja"} className="inline-flex min-h-12 items-center rounded-[10px] bg-brand px-6 font-semibold text-brand-ink">
+        <Link href={hasStore ? "/painel" : "/onboarding"} className="inline-flex min-h-12 items-center rounded-[10px] bg-brand px-6 font-semibold text-brand-ink">
           {hasStore ? "Ir para o painel" : "Criar minha loja"}
         </Link>
       </main>
