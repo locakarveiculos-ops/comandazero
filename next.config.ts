@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // forbidden()/unauthorized() para respostas 403/401 nas telas protegidas.
+  experimental: { authInterrupts: true },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
   },

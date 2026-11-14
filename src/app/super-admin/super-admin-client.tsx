@@ -17,7 +17,7 @@ import { money, readableInk, round2, slugify } from "@/lib/utils";
 
 const PRICE: Record<Plan, number> = { starter: 89, pro: 179, enterprise: 399 };
 
-export default function SuperAdmin() {
+export function SuperAdminClient() {
   const hydrated = useHydrated();
   const tenants = useDb((s) => s.tenants);
   const orders = useDb((s) => s.orders);
