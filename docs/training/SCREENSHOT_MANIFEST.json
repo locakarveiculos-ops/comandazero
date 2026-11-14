@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "buildSha": "6d1edd0",
-  "capturedAt": "2026-11-14T21:22:01.035Z",
+  "buildSha": "6fd448d",
+  "capturedAt": "2026-11-14T23:20:41.340Z",
   "tenant": "cafe-e-flor (demo)",
   "screenshots": [
     {
@@ -109,7 +109,8 @@
       "file": "/training/screenshots/1.0.0/loja/acompanhamento.webp",
       "ok": true,
       "articles": [
-        "cliente-pedido"
+        "cliente-pedido",
+        "avaliacoes-clientes"
       ],
       "validation": "capturado"
     },
@@ -377,7 +378,7 @@
       "name": "super-admin/visao",
       "route": "/super-admin",
       "viewport": "desktop",
-      "state": "visão da plataforma",
+      "state": "visão da plataforma com dados reais",
       "file": "/training/screenshots/1.0.0/super-admin/visao.webp",
       "ok": true,
       "articles": [
@@ -387,13 +388,50 @@
     },
     {
       "name": "super-admin/onboarding",
-      "route": "/super-admin",
+      "route": "/onboarding",
       "viewport": "desktop",
-      "state": "onboarding de loja",
+      "state": "passo 1 do assistente",
       "file": "/training/screenshots/1.0.0/super-admin/onboarding.webp",
       "ok": true,
       "articles": [
-        "super-admin-lojas"
+        "super-admin-lojas",
+        "onboarding-loja"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "onboarding/aparencia",
+      "route": "/onboarding",
+      "viewport": "desktop",
+      "state": "passo 4 com prévia de cores",
+      "file": "/training/screenshots/1.0.0/onboarding/aparencia.webp",
+      "ok": true,
+      "articles": [
+        "onboarding-loja"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "equipe/lista",
+      "route": "/painel/[loja]/equipe",
+      "viewport": "desktop",
+      "state": "equipe com papéis",
+      "file": "/training/screenshots/1.0.0/equipe/lista.webp",
+      "ok": true,
+      "articles": [
+        "equipe-papeis"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "assinatura/planos",
+      "route": "/painel/[loja]/assinatura",
+      "viewport": "desktop",
+      "state": "teste grátis e planos",
+      "file": "/training/screenshots/1.0.0/assinatura/planos.webp",
+      "ok": true,
+      "articles": [
+        "assinatura-plano"
       ],
       "validation": "capturado"
     },
