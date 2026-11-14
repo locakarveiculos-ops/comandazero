@@ -1,4 +1,14 @@
+import { existsSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+
+const adminEnv: Record<string, string> = existsSync(".env.local")
+  ? Object.fromEntries(
+      readFileSync(".env.local", "utf8")
+        .split(/\r?\n/)
+        .filter((l) => /^E2E_ADMIN_/.test(l))
+        .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
+    )
+  : {};
 
 const errorsOf = (page: Page) => {
   const errs: string[] = [];
@@ -264,7 +274,13 @@ test.describe("Retaguarda", () => {
   });
 
   test("Super Admin: cria tenant e a loja nova abre com cardápio", async ({ page }) => {
-    await page.goto("/super-admin");
+    // Super Admin exige admin da plataforma (credenciais de teste no .env.local).
+    test.skip(!adminEnv.E2E_ADMIN_EMAIL, "admin de teste ausente");
+    await page.goto("/entrar?next=%2Fsuper-admin");
+    await page.getByLabel("E-mail").fill(adminEnv.E2E_ADMIN_EMAIL);
+    await page.getByLabel("Senha").fill(adminEnv.E2E_ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "Entrar", exact: true }).click();
+    await page.waitForURL("**/super-admin", { timeout: 15000 });
     await page.getByRole("button", { name: "Criar novo estabelecimento" }).click();
     await page.getByLabel("Nome do estabelecimento").fill("Padaria Pão Dourado");
     await page.getByRole("button", { name: "Criar e publicar" }).click();

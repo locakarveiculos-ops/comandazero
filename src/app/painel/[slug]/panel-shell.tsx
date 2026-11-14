@@ -181,9 +181,9 @@ export function PanelShell({ slug, children, access }: { slug: string; children:
             <p className="truncate font-semibold leading-tight">{tenant.name}</p>
             <p className="flex items-center gap-1.5 truncate text-xs text-cz-muted">
               {access.isDemo ? (
-                <span className="rounded-full bg-cz-warning/15 px-1.5 font-semibold text-cz-warning">Demonstração</span>
+                <span className="rounded-full bg-[#f8ecdc] px-1.5 font-semibold text-[#7d4710]">Demonstração</span>
               ) : (
-                <span className={cn("inline-flex items-center gap-1 font-semibold", live ? "text-cz-success" : "text-cz-error")} data-testid="conexao">
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 font-semibold", live ? "bg-[#e3f3ec] text-[#0f6646]" : "bg-[#f8e4e4] text-[#8f2a2a]")} data-testid="conexao">
                   <span className={cn("size-2 rounded-full", live ? "bg-cz-success" : "bg-cz-error")} aria-hidden />
                   {live ? "Ao vivo" : "Reconectando…"}
                 </span>

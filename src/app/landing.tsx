@@ -11,7 +11,6 @@ import {
   MessageSquareMore,
   MonitorSmartphone,
   QrCode,
-  ShieldCheck,
   Smartphone,
 } from "lucide-react";
 import Link from "next/link";
