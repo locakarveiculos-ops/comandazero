@@ -1,6 +1,6 @@
 "use client";
 
-import { Bike, Check, ChefHat, ClipboardCheck, MessageCircle, PackageCheck, Upload } from "lucide-react";
+import { Bike, Check, ChefHat, ClipboardCheck, MessageCircle, PackageCheck, Star, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -19,11 +19,12 @@ type Tracked = {
   total: number; deposit: number | null; scheduled_for: string | null; table_number: string | null; created_at: string;
   customer_first_name: string; items: { name: string; qty: number; unit_price: number; options: { name: string }[] }[];
   events: { status: OrderStatus; at: string }[];
+  reviewed?: boolean;
 };
 
 /** Loja real: acompanha pelo token (qualquer aparelho). Atualiza a cada 5 s enquanto o pedido não termina. */
 function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
-  const [state, setState] = useState<{ order: Order | null; loading: boolean }>({ order: null, loading: enabled });
+  const [state, setState] = useState<{ order: Order | null; loading: boolean; reviewed: boolean }>({ order: null, loading: enabled, reviewed: false });
   useEffect(() => {
     if (!enabled || !token) return;
     let alive = true;
@@ -32,7 +33,7 @@ function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
       const r = await fetch(`/api/rastreio?id=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`, { cache: "no-store" }).catch(() => null);
       if (!alive) return;
       const d = r?.ok ? ((await r.json()) as Tracked) : null;
-      setState({ order: d ? toOrder(d) : null, loading: false });
+      setState({ order: d ? toOrder(d) : null, loading: false, reviewed: !!d?.reviewed });
       if (!d || !["entregue", "cancelado"].includes(d.status)) timer = setTimeout(load, 5000);
     };
     void load();
@@ -41,7 +42,7 @@ function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
       clearTimeout(timer);
     };
   }, [id, token, enabled]);
-  return enabled && !token ? { order: null, loading: false } : state;
+  return enabled && !token ? { order: null, loading: false, reviewed: false } : state;
 }
 
 const toOrder = (d: Tracked): Order => ({
@@ -160,16 +161,69 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
           {order.deposit ? <p className="mt-1 text-sm text-muted">Sinal: {money(order.deposit)} · restante {money(order.total - order.deposit)} na retirada</p> : null}
         </section>
 
+        {remote && order.status === "entregue" && token && <Review id={id} token={token} done={tracked.reviewed} />}
+
         <div className="grid gap-2 sm:grid-cols-2">
           <a href={`https://wa.me/${tenant.whatsapp}?text=${msg}`} target="_blank" rel="noopener" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#1f8f4e] px-5 font-semibold text-white">
             <MessageCircle className="size-5" aria-hidden /> Chamar no WhatsApp
           </a>
+          {/* Envio de comprovante ainda não grava arquivo: fica só na demonstração. Loja real recebe pelo WhatsApp. */}
+          {!remote && (
           <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 font-semibold text-ink focus-within:outline focus-within:outline-3 focus-within:outline-accent-text">
             <Upload className="size-5" aria-hidden /> {proof ? "Comprovante enviado" : "Enviar comprovante"}
             <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => onProof(e.target.files?.[0])} />
           </label>
+          )}
         </div>
       </main>
     </TenantTheme>
+  );
+}
+
+/** Avaliação do pedido entregue: 1 a 5 estrelas e comentário opcional. Uma por pedido (o banco garante). */
+function Review({ id, token, done }: { id: string; token: string; done: boolean }) {
+  const [stars, setStars] = useState(0);
+  const [comment, setComment] = useState("");
+  const [sent, setSent] = useState(done);
+  const [loading, setLoading] = useState(false);
+
+  if (sent)
+    return (
+      <p role="status" className="rounded-3xl border border-line bg-surface p-5 text-center font-semibold text-ink">
+        Obrigado pela avaliação!
+      </p>
+    );
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stars) return toast.error("Escolha de 1 a 5 estrelas.");
+    setLoading(true);
+    const r = await fetch("/api/avaliacoes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, t: token, stars, comment: comment.trim() || undefined }) });
+    setLoading(false);
+    const d = await r.json().catch(() => ({}));
+    if (r.ok || r.status === 409) return setSent(true);
+    toast.error(d.error ?? "Não foi possível enviar agora.");
+  };
+
+  return (
+    <form onSubmit={send} className="rounded-3xl border border-line bg-surface p-5 text-ink" aria-labelledby="avaliar">
+      <h2 id="avaliar" className="font-bold">
+        Como foi o seu pedido?
+      </h2>
+      <div role="radiogroup" aria-label="Nota de 1 a 5 estrelas" className="mt-3 flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} estrela${n > 1 ? "s" : ""}`} onClick={() => setStars(n)} className="grid size-11 place-items-center rounded-full hover:bg-line/40">
+            <Star className={cn("size-7", n <= stars ? "fill-highlight text-highlight" : "text-muted")} aria-hidden />
+          </button>
+        ))}
+      </div>
+      <label htmlFor="comentario" className="mt-3 block text-sm font-semibold">
+        Comentário (opcional)
+      </label>
+      <textarea id="comentario" maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} className="mt-1 min-h-20 w-full rounded-2xl border border-line bg-paper p-3 text-base" />
+      <button type="submit" disabled={loading} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-5 font-semibold text-primary-ink disabled:opacity-60">
+        {loading ? "Enviando…" : "Enviar avaliação"}
+      </button>
+    </form>
   );
 }

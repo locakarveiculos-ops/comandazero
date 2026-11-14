@@ -20,7 +20,8 @@ export function tenantFromRow(r: Row, zones: Row[] = []): Tenant {
     address: r.address ?? {},
     hours: r.hours ?? [],
     prepMinutes: r.prep_minutes ?? 15,
-    rating: 5,
+    // Preenchidos por getRealTenant a partir de tenant_rating (0 = menos de 10 avaliações, não exibir).
+    rating: 0,
     ratingCount: 0,
     modes: r.modes ?? ["retirada"],
     deliveryZones: zones.map((z) => ({ id: z.id, bairro: z.bairro, fee: Number(z.fee), minutes: z.minutes })),
