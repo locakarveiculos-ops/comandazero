@@ -10,7 +10,8 @@ import { ProductModal } from "@/components/loja/product-modal";
 import { PrintButton } from "@/components/painel/receipt";
 import { Button, Modal } from "@/components/ui";
 import { changeDue, splitEvenly } from "@/lib/pricing";
-import { createOrder, markOrderPaid, useMenu } from "@/lib/repositories";
+import { createOrder, markOrderPaid } from "@/lib/repositories";
+import { useStoreMenu } from "@/lib/repositories/engine";
 import type { CartItem, Order, PaymentMethod, PaymentSplit, Product } from "@/lib/types";
 import { cartSubtotal, cn, money, round2, uid } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ const LABEL = Object.fromEntries(METHODS.map((m) => [m.id, m.label]));
 export default function PdvPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const { categories, products } = useMenu(tenant?.id);
+  const { categories, products } = useStoreMenu(tenant);
   const [cat, setCat] = useState("all");
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<CartItem[]>([]);
@@ -71,13 +72,17 @@ export default function PdvPage() {
 
   if (!tenant) return null;
 
-  const onSearchEnter = () => {
+  const onSearchEnter = (e: React.KeyboardEvent) => {
     const q = query.trim();
+    if (!q) return;
+    // O Enter não pode "vazar" para o modal de opções que abre em seguida (fecharia o modal na hora).
+    e.preventDefault();
     const exact = products.find((p) => p.code === q) ?? (list.length === 1 ? list[0] : null);
     if (exact) {
-      quickAdd(exact);
       setQuery("");
-    } else toast.info("Nenhum produto único para esse código/nome");
+      requestAnimationFrame(() => quickAdd(exact));
+    } else if (!list.length) toast.error(`Código ou produto “${q}” não encontrado`);
+    else toast.info(`${list.length} produtos combinam com “${q}”. Toque no desejado ou digite o código.`);
   };
 
   const finish = (payments: PaymentSplit[], change: number) => {
@@ -117,7 +122,7 @@ export default function PdvPage() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSearchEnter()}
+            onKeyDown={(e) => e.key === "Enter" && onSearchEnter(e)}
             placeholder="Código ou nome (ex.: 101, cappuccino)"
             data-tour="pdv-busca"
             className="min-h-14 w-full rounded-2xl border border-cz-border bg-cz-surface pl-12 pr-4 text-lg"

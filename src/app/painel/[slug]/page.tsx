@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useHydrated } from "@/components/providers";
 import { Card, Skeleton } from "@/components/ui";
-import { useOrders } from "@/lib/repositories";
+import { useStoreOrders } from "@/lib/repositories/engine";
 import type { Channel } from "@/lib/types";
 import { useMinute } from "@/lib/use-now";
 import { money, round2 } from "@/lib/utils";
@@ -26,7 +26,7 @@ export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
   const hydrated = useHydrated();
-  const orders = useOrders(tenant?.id);
+  const { orders } = useStoreOrders(tenant);
   const now = useMinute();
 
   const data = useMemo(() => {

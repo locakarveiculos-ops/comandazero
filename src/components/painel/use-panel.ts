@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDb, useIntegrations } from "@/lib/repositories";
 import { subscribe } from "@/lib/repositories/events";
@@ -66,4 +66,22 @@ async function send(trigger: Parameters<typeof notifyOrder>[0], order: Order | u
   if (!order) return;
   const r = await notifyOrder(trigger, order, tenant, settings);
   if (r.sent) toast.message(`WhatsApp enviado para ${order.customer.name.split(" ")[0]}`, { description: `Gatilho: ${trigger}` });
+}
+
+/** Alerta para pedido novo vindo do Realtime (loja real): som, notificação e gatilho de WhatsApp. */
+export function useRemoteOrderAlert(tenant: Tenant | undefined) {
+  const settings = useIntegrations(tenant?.id);
+  const soundOn = useDb((s) => s.soundOn);
+  const ref = useRef({ tenant, settings, soundOn });
+  useEffect(() => {
+    ref.current = { tenant, settings, soundOn };
+  });
+  const [handler] = useState(() => (o: Order) => {
+    const { tenant: t, settings: s, soundOn: snd } = ref.current;
+    if (!t) return;
+    if (snd) chime("order");
+    toast.success(`Novo pedido #${o.number}`, { description: describe(o) });
+    void send("recebido", o, t, s);
+  });
+  return handler;
 }

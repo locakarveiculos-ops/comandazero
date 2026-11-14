@@ -6,7 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { PrintButton } from "@/components/painel/receipt";
 import { Badge, Button, Empty } from "@/components/ui";
-import { markOrderPaid, markOrdersSeen, setOrderStatus, useOrders } from "@/lib/repositories";
+import { markOrderPaid, markOrdersSeen } from "@/lib/repositories";
+import { changeOrderStatus, isRemote, useStoreOrders } from "@/lib/repositories/engine";
+import { toast } from "sonner";
+import type { Tenant } from "@/lib/types";
 import type { Order, OrderStatus } from "@/lib/types";
 import { useMinute } from "@/lib/use-now";
 import { MODE_LABEL, STATUS_LABEL, cn, elapsedMinutes, fmtDateTime, formatPhone, money } from "@/lib/utils";
@@ -20,7 +23,7 @@ const FILTERS: { id: string; label: string; match: (o: Order) => boolean }[] = [
 export default function PedidosPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const orders = useOrders(tenant?.id);
+  const { orders } = useStoreOrders(tenant);
   const [filter, setFilter] = useState("ativos");
   const list = useMemo(() => orders.filter(FILTERS.find((f) => f.id === filter)!.match).slice(0, 80), [orders, filter]);
 
@@ -99,12 +102,12 @@ export default function PedidosPage() {
                     </a>
                   )}
                   <PrintButton order={o} tenant={tenant} />
-                  {o.paymentStatus !== "pago" && o.status !== "cancelado" && (
+                  {o.paymentStatus !== "pago" && o.status !== "cancelado" && !isRemote(tenant) && (
                     <Button size="sm" variant="secondary" onClick={() => markOrderPaid(o.id, [{ method: o.paymentMethod, amount: o.total }])}>
                       Receber
                     </Button>
                   )}
-                  <NextAction order={o} />
+                  <NextAction order={o} tenant={tenant} />
                 </div>
               </div>
             </li>
@@ -115,7 +118,8 @@ export default function PedidosPage() {
   );
 }
 
-function NextAction({ order }: { order: Order }) {
+function NextAction({ order, tenant }: { order: Order; tenant: Tenant }) {
+  const go = (status: OrderStatus) => void changeOrderStatus(tenant, order.id, status).catch((e: Error) => toast.error(e.message));
   const next: Partial<Record<OrderStatus, { to: OrderStatus; label: string; icon: typeof Check }>> = {
     recebido: { to: "preparo", label: "Aceitar e preparar", icon: ChefHat },
     preparo: { to: "pronto", label: "Marcar pronto", icon: PackageCheck },
@@ -126,12 +130,12 @@ function NextAction({ order }: { order: Order }) {
   return (
     <>
       {order.status === "recebido" && (
-        <Button size="sm" variant="ghost" className="text-cz-error" onClick={() => setOrderStatus(order.id, "cancelado")}>
+        <Button size="sm" variant="ghost" className="text-cz-error" onClick={() => go("cancelado")}>
           <X className="size-4" aria-hidden /> Recusar
         </Button>
       )}
       {n && (
-        <Button size="sm" variant="brand" onClick={() => setOrderStatus(order.id, n.to)}>
+        <Button size="sm" variant="brand" onClick={() => go(n.to)}>
           <n.icon className="size-4" aria-hidden /> {n.label}
         </Button>
       )}
