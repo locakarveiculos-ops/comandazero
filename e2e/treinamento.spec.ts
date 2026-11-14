@@ -50,8 +50,15 @@ test.describe("Central de treinamento e tours", () => {
     await expect(pop).toBeVisible();
     await expect(pop).toContainText("1 de 5");
     await expect(pop).toContainText("Busque ou digite o código");
-    await page.keyboard.press("ArrowRight");
+    // Enter no botão focado avança (sem depender da animação); depois as setas também navegam.
+    await expect(pop.getByRole("button", { name: "Próximo" })).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(pop).toContainText("2 de 5");
+    await expect(pop.getByRole("button", { name: "Próximo" })).toBeFocused();
+    await expect(async () => {
+      await page.keyboard.press("ArrowLeft");
+      await expect(pop).toContainText("1 de 5", { timeout: 800 });
+    }).toPass({ timeout: 6000 });
     await page.keyboard.press("Escape");
     await expect(pop).toHaveCount(0);
     // O tour não executou nada: venda continua vazia.
