@@ -22,6 +22,8 @@ export const PERMISSIONS = {
   "integrations.edit": ["owner", "manager"],
   "loyalty.edit": ["owner", "manager"],
   "reports.view": ["owner", "manager"],
+  "team.manage": ["owner"],
+  "billing.manage": ["owner"],
 } as const satisfies Record<string, readonly Role[]>;
 export type Permission = keyof typeof PERMISSIONS;
 
@@ -39,6 +41,8 @@ export const PAGE_PERMISSION: Record<string, Permission> = {
   aparencia: "brand.edit",
   integracoes: "integrations.edit",
   treinamento: "orders.view",
+  equipe: "team.manage",
+  assinatura: "billing.manage",
 };
 
 export const getUser = cache(async () => {

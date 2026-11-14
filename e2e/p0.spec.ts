@@ -174,3 +174,50 @@ test.describe("P0 · APIs", () => {
     await expect(page.getByRole("button", { name: /Pagar com Pix/ })).toHaveCount(0);
   });
 });
+
+test.describe("Assinatura e equipe", () => {
+  test.skip(!hasUsers, "usuários de teste ausentes");
+
+  test("dono vê aviso de teste grátis, Assinatura e Equipe; caixa não", async ({ browser }) => {
+    const owner = await login(browser, "OWNER");
+    await owner.page.waitForURL(`**/painel/${SLUG}`);
+    await expect(owner.page.getByTestId("aviso-teste")).toContainText("Teste grátis");
+    await owner.page.getByRole("link", { name: "Assinatura" }).first().click();
+    await expect(owner.page.getByRole("heading", { level: 1, name: "Assinatura" })).toBeVisible();
+    await expect(owner.page.getByRole("radio", { name: /^Profissional/ })).toBeVisible();
+    await expect(owner.page.getByRole("radio", { name: /^Profissional/ })).toContainText("R$ 189,90");
+    await owner.ctx.close();
+
+    const cashier = await login(browser, "CASHIER");
+    await cashier.page.waitForURL(`**/painel/${SLUG}`);
+    await expect(cashier.page.locator(`a[href="/painel/${SLUG}/assinatura"]`)).toHaveCount(0);
+    await expect(cashier.page.locator(`a[href="/painel/${SLUG}/equipe"]`)).toHaveCount(0);
+    expect((await cashier.page.goto(`/painel/${SLUG}/assinatura`))?.status()).toBe(403);
+    expect((await cashier.page.goto(`/painel/${SLUG}/equipe`))?.status()).toBe(403);
+    const r = await cashier.page.request.post("/api/equipe", { data: { slug: SLUG, email: "x@y.com", role: "manager" } });
+    expect(r.status()).toBe(403);
+    await cashier.ctx.close();
+  });
+
+  test("dono adiciona conta existente, troca o papel e remove", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/equipe`);
+    await page.waitForURL(`**/painel/${SLUG}/equipe`);
+    const email = env.E2E_OUTSIDER_EMAIL.toLowerCase();
+    await page.getByLabel("E-mail").fill(email);
+    await page.getByLabel("Papel", { exact: true }).selectOption("kitchen");
+    await page.getByRole("button", { name: "Adicionar" }).click();
+    const row = page.getByRole("row").filter({ hasText: email });
+    await expect(row).toBeVisible();
+    await row.getByLabel(`Papel de ${email}`).selectOption("waiter");
+    await expect(page.getByText("Papel atualizado.")).toBeVisible();
+    page.on("dialog", (d) => d.accept());
+    await row.getByRole("button", { name: `Remover ${email}` }).click();
+    await expect(page.getByRole("row").filter({ hasText: email })).toHaveCount(0);
+    await ctx.close();
+  });
+
+  test("webhook da assinatura recusa sem token", async ({ request }) => {
+    const r = await request.post("/api/webhooks/assinatura", { data: { event: "PAYMENT_RECEIVED" } });
+    expect([401, 503]).toContain(r.status());
+  });
+});

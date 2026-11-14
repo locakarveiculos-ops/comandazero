@@ -18,6 +18,8 @@ import {
   Palette,
   Plug,
   Store,
+  Users,
+  Wallet,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -38,7 +40,8 @@ import { cn } from "@/lib/utils";
 
 // Papéis que veem cada item (espelha PAGE_PERMISSION do servidor; o servidor é quem bloqueia de fato).
 const ALL: Role[] = ["owner", "manager", "cashier", "waiter", "kitchen"];
-const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolean; roles: Role[] }[] = [
+// realOnly: telas que só existem para loja real (equipe e cobrança não fazem sentido na demonstração).
+const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolean; roles: Role[]; realOnly?: boolean }[] = [
   { href: "", label: "Dashboard", icon: BarChart3, roles: ALL },
   { href: "/pedidos", label: "Pedidos", icon: ListOrdered, badge: true, roles: ALL },
   { href: "/pdv", label: "PDV Balcão", icon: MonitorSmartphone, roles: ["owner", "manager", "cashier"] },
@@ -48,15 +51,17 @@ const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolea
   { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart, roles: ["owner", "manager"] },
   { href: "/aparencia", label: "Marca do app", icon: Palette, roles: ["owner", "manager"] },
   { href: "/integracoes", label: "Integrações", icon: Plug, roles: ["owner", "manager"] },
+  { href: "/equipe", label: "Equipe", icon: Users, roles: ["owner"], realOnly: true },
+  { href: "/assinatura", label: "Assinatura", icon: Wallet, roles: ["owner"], realOnly: true },
   { href: "/treinamento", label: "Central de treinamento", icon: GraduationCap, roles: ALL },
 ];
 
 type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen";
-export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null; platformAdmin: boolean };
+export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null; platformAdmin: boolean; readOnly?: boolean };
 
 const COLLAPSE_KEY = "cz-sidebar-collapsed";
 
-export function PanelShell({ slug, children, access }: { slug: string; children: ReactNode; access: PanelAccess }) {
+export function PanelShell({ slug, children, access, banner }: { slug: string; children: ReactNode; access: PanelAccess; banner?: ReactNode }) {
   const path = usePathname();
   const { tenant, notFound } = useStoreTenant(slug);
   // Loja real: pedido novo chega pelo Realtime (outro aparelho). Demo: pelo aviso entre abas (useOrderAlerts).
@@ -109,7 +114,7 @@ export function PanelShell({ slug, children, access }: { slug: string; children:
 
   const nav = (compact: boolean) => (
     <nav aria-label="Painel" className="grid gap-1">
-      {NAV.filter((n) => access.isDemo || (access.role && n.roles.includes(access.role))).map((n) => {
+      {NAV.filter((n) => (access.isDemo ? !n.realOnly : !!access.role && n.roles.includes(access.role))).map((n) => {
         const href = base + n.href;
         const active = n.href ? path.startsWith(href) : path === base;
         return (
@@ -205,6 +210,7 @@ export function PanelShell({ slug, children, access }: { slug: string; children:
           <ThemeToggle />
         </header>
         <main id="conteudo" className="min-w-0 p-4 sm:p-6">
+          {banner}
           <WelcomeTour slug={slug} />
           <Suspense>
             <TourFromQuery slug={slug} />
