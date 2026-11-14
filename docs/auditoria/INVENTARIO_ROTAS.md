@@ -1,40 +1,57 @@
 # Inventário de rotas · ComandaZero
 
-Auditoria de 14/11/2026, branch `auditoria-e-treinamento`, a partir do commit `6d1edd0` (produção).
-Evidência de tela: `docs/auditoria/baseline.json` (gerado por `e2e/baseline.spec.ts`): 15 rotas × 3 tamanhos (1440×900, 1024×768, 390×844) = **45 combinações, 0 com erro de console, erro de rede, elemento sem nome ou rolagem lateral** após as correções desta rodada.
+Atualizado em 14/11/2026, branch `p0-producao`. Rodada anterior: commit `6d1edd0` (ver histórico do git).
+Legenda: `REAL/TESTADO` funciona com banco real e tem teste automatizado · `DEMONSTRAÇÃO` lojas `cafe-e-flor` e `burger-station` (dados no navegador, abertas sem login) · `PARCIAL` · `AUSENTE`.
 
-Legenda de status: `REAL/TESTADO` funciona e tem teste automatizado · `MOCK/DEMONSTRAÇÃO` funciona com dados ou serviço simulado · `PARCIAL` · `AUSENTE` · `NÃO VERIFICADO`.
+Proteção: o `proxy.ts` redireciona anônimo para `/entrar?next=…` e responde **403** a quem está logado sem vínculo; o layout do painel confere de novo o papel exigido por página (`PAGE_PERMISSION` em `src/lib/server/auth.ts`).
 
 ## Páginas
 
-| Rota | Quem usa | PWA | Depende de | Status | Problemas encontrados | Prioridade / ação |
-|---|---|---|---|---|---|---|
-| `/` | Público | SaaS (manifest só em `/painel`) | — | REAL/TESTADO | Nenhum | — |
-| `/entrar` | Lojista | — | Supabase Auth | PARCIAL | Login funciona contra o Supabase, mas o painel **não exige** sessão | P0: proteger `/painel` e `/super-admin` no servidor |
-| `/loja/[slug]` | Cliente final | Loja (manifest próprio, escopo `/loja/<slug>`) | Dados no navegador | MOCK/DEMONSTRAÇÃO | Cardápio lido do `localStorage`, não do Supabase | P0: ler cardápio do banco (RLS pública já testada) |
-| `/loja/[slug]?mesa=07` | Cliente na mesa | Loja | — | MOCK/DEMONSTRAÇÃO | Número da mesa vem só da URL (sem token) | P1: QR com token não previsível |
-| `/loja/[slug]/pedido/[id]` | Cliente | Loja | Dados no navegador | MOCK/DEMONSTRAÇÃO | Só abre no mesmo navegador que fez o pedido | P0: buscar por `get_order_tracking(id, token)` (função já existe no banco) |
-| `/painel` | Lojista | SaaS | — | REAL/TESTADO | Redireciona fixo para `cafe-e-flor` | P0: redirecionar para a loja da sessão |
-| `/painel/[slug]` | Proprietário | SaaS | Dados no navegador | MOCK/DEMONSTRAÇÃO | Números do dashboard são do histórico demo | P0 junto com pedidos no banco |
-| `/painel/[slug]/pedidos` | Caixa, atendente | SaaS | BroadcastChannel | MOCK/DEMONSTRAÇÃO | Tempo real só entre abas do mesmo navegador | P0: Supabase Realtime |
-| `/painel/[slug]/pdv` | Caixa | SaaS | — | REAL/TESTADO (local) | Sem abertura/fechamento de caixa por operador | P1: sessão de caixa |
-| `/painel/[slug]/mesas` | Garçom | SaaS | — | REAL/TESTADO (local) | Sem juntar/separar contas, sem PWA do garçom | P1 |
-| `/painel/[slug]/kds` | Cozinha | SaaS | BroadcastChannel | REAL/TESTADO (local) | Uma estação só; sem expedição | P1: estações e expedidor |
-| `/painel/[slug]/cardapio` | Proprietário | SaaS | — | REAL/TESTADO (local) | Fotos enviadas ficam no `localStorage` (limite ~5 MB) | P0: Supabase Storage |
-| `/painel/[slug]/fidelidade` | Proprietário | SaaS | — | REAL/TESTADO (local) | Selos calculados no navegador | P1: regra transacional no servidor |
-| `/painel/[slug]/aparencia` | Proprietário | SaaS | — | REAL/TESTADO (local) | **Corrigido:** prévia mostrava “Croissant Artesanal R$ 15,90” fixo; catálogo tem Croissants Artesanais R$ 16,50. Agora usa os produtos reais | — |
-| `/painel/[slug]/integracoes` | Proprietário, atendente | SaaS | Whaileys, Evolution, gateways | PARCIAL | WhatsApp Whaileys real (canal por loja); Evolution real se `EVOLUTION_API_*` configurado; pagamentos só montam payload (sandbox) | P1: cobrança real por gateway com webhook assinado |
-| `/painel/[slug]/treinamento` | Toda a equipe | SaaS | — | REAL/TESTADO | Novo nesta rodada | — |
-| `/super-admin` | Dono da plataforma | SaaS | Dados no navegador | MOCK/DEMONSTRAÇÃO | **Sem autenticação**: qualquer pessoa com o link abre. MRR calculado da demo | **P0 crítico** |
+| Rota | Quem usa | Exige | Status | Teste |
+|---|---|---|---|---|
+| `/` | Público | — | REAL/TESTADO · landing com prints reais, planos de `src/lib/plans.ts` | `e2e/landing.spec.ts` |
+| `/entrar` | Lojista e equipe | — | REAL/TESTADO · mostrar senha, força, máscara de WhatsApp, aceite dos Termos, reenvio com espera | `e2e/auth.spec.ts` |
+| `/auth/callback` | Links de e-mail | token do e-mail | REAL/TESTADO · `token_hash` e `code`; link inválido volta com aviso | `e2e/auth.spec.ts` |
+| `/auth/confirmado` | Conta nova | login | REAL/TESTADO | `e2e/auth.spec.ts` |
+| `/redefinir-senha` | Quem pediu recuperação | sessão de recuperação | REAL/TESTADO | `e2e/auth.spec.ts` |
+| `/onboarding` | Conta nova | login | REAL/TESTADO · 5 passos, loja real com 14 dias de teste | `e2e/fluxos.spec.ts` › Super Admin |
+| `/painel/nova-loja` | Endereço antigo | login | Redireciona para `/onboarding` | — |
+| `/termos`, `/privacidade` | Público | — | REAL/TESTADO · versão e data visíveis | `e2e/auth.spec.ts` |
+| `/loja/[slug]` | Cliente | — | REAL/TESTADO · banco para loja real, 404 para slug inexistente, JSON-LD, canonical | `e2e/p0.spec.ts`, `e2e/seo.spec.ts` |
+| `/loja/[slug]/pedido/[id]?t=` | Cliente | token do pedido | REAL/TESTADO · qualquer aparelho, atualiza a cada 5 s, avaliação após entregue | `e2e/p0.spec.ts` |
+| `/painel` | Lojista | — | REAL/TESTADO · anônimo vai para a demo; logado vai para a própria loja, Super Admin ou onboarding | — |
+| `/painel/[slug]` (+ pedidos, kds, pdv, mesas, cardapio, fidelidade, aparencia, integracoes, treinamento) | Equipe por papel | login + papel (loja real) | REAL/TESTADO · Realtime de pedidos < 3 s entre aparelhos | `e2e/p0.spec.ts` |
+| `/painel/[slug]/equipe` | Dono | `team.manage` | REAL/TESTADO | `e2e/p0.spec.ts` › Assinatura e equipe |
+| `/painel/[slug]/assinatura` | Dono | `billing.manage` | PARCIAL · tela e regras prontas; cobrança ativa com `ASAAS_API_KEY` (ver `docs/PASSOS_MANUAIS.md`) | `e2e/p0.spec.ts` |
+| `/super-admin` | Admin da plataforma | `platform_admins` | REAL/TESTADO · dados reais, MRR por assinatura, suspender/reativar com histórico | `e2e/p0.spec.ts` |
+| `/acesso-negado` | Logado sem vínculo | — | REAL/TESTADO (403) | `e2e/p0.spec.ts` |
+| `/robots.txt`, `/sitemap.xml` | Buscadores | — | REAL/TESTADO · demos fora do sitemap | `e2e/seo.spec.ts` |
 
 ## APIs
 
 | Rota | Função | Proteção | Status |
 |---|---|---|---|
-| `GET /api/manifest/[slug]` | Manifest PWA por loja / `saas` | Pública (sem dado sensível) | REAL/TESTADO |
-| `GET /api/tenant-icon/[slug]` | Ícone PWA de loja sem ícone próprio | Pública | REAL |
-| `POST /api/whatsapp/channel` | Conectar/status/logout do WhatsApp da loja | Código de ativação + selo AES-GCM + limite por IP | REAL/TESTADO (produção) |
-| `POST /api/whatsapp/send` | Envio pelo número da loja | Selo do canal + limite por instância | REAL |
-| `POST /api/whatsapp/evolution` | Provedor Evolution | Chaves só no servidor; 503 sem configuração | REAL (sem servidor Evolution configurado) |
-| `POST /api/webhooks/whaileys` | Mensagens recebidas | HMAC + janela 5 min + dedupe por `key.id` | REAL/TESTADO (unitário) |
-| `POST /api/webhooks/pagamentos/[gateway]` | Confirmação de pagamento | **Sem verificação de assinatura** | MOCK: só normaliza o evento |
+| `POST /api/pedidos` | Cria pedido de loja real | Zod + `create_order` (preço, opções, cupom, zona e sinal recalculados no banco) + idempotência | REAL/TESTADO |
+| `POST /api/pedidos/[id]/status` | Avança/cancela | sessão + `set_order_status` (papel) | REAL/TESTADO |
+| `GET /api/rastreio` | Acompanhamento | token ≥ 32 + limite por IP | REAL/TESTADO |
+| `POST /api/avaliacoes` | Avaliação do cliente | token + pedido entregue + uma por pedido | REAL/TESTADO (banco) |
+| `POST /api/produtos/foto` | Foto do produto | dono/gerente + bytes de imagem conferidos + 2 MB | REAL |
+| `POST/PATCH/DELETE /api/equipe` | Equipe | só dono; histórico em `audit_log` | REAL/TESTADO |
+| `POST /api/assinatura` | Cria assinatura no Asaas | só dono; preço de `plans.ts` | PARCIAL (depende de `ASAAS_API_KEY`) |
+| `POST /api/webhooks/assinatura` | Eventos do Asaas | token no header + idempotência | REAL (503 sem token configurado) |
+| `PATCH /api/admin/lojas/[id]` | Suspender/reativar/plano | só admin da plataforma; histórico | REAL/TESTADO |
+| `POST /api/webhooks/pagamentos/[gateway]` | Pagamento de pedido | assinatura por gateway + idempotência | REAL/TESTADO (Mercado Pago) |
+| `GET /api/manifest/[slug]`, `/api/tenant-icon/[slug]` | PWA | pública | REAL/TESTADO |
+| `/api/whatsapp/*`, `/api/webhooks/whaileys` | WhatsApp da loja | selo do canal, HMAC, dedupe | REAL |
+
+## Banco (migrações em `supabase/migrations/`)
+
+| Migração | Conteúdo |
+|---|---|
+| `20261114000100_p0_producao.sql` | `is_demo`, papéis, `create_order`, rastreio, status, `payment_events`, Storage, `save_product`, `create_my_tenant` |
+| `20261114000200_aceite_legal.sql` | `legal_acceptances` gravado por gatilho no cadastro |
+| `20261114000300_assinaturas_auditoria.sql` | `subscriptions`, teste de 14 dias, `audit_log`, `platform_overview` |
+| `20261114000400_onboarding.sql` | `create_my_tenant_v2` (modos, horário, cores, cardápio modelo ou vazio) |
+| `20261114000500_somente_leitura.sql` | Gatilhos que travam edição em atraso > 7 dias (pedidos continuam) |
+| `20261114000600_equipe.sql` | `team_members`, `user_id_by_email` (só servidor) |
+| `20261114000700_avaliacoes.sql` | `order_reviews`, `submit_order_review`, `tenant_rating` (média só com 10+) |
