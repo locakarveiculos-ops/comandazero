@@ -18,7 +18,7 @@ async function login(browser: Browser, who: "OWNER" | "CASHIER" | "ADMIN" | "OUT
   const page = await ctx.newPage();
   await page.goto(`/entrar?next=${encodeURIComponent(next)}`);
   await page.getByLabel("E-mail").fill(env[`E2E_${who}_EMAIL`]);
-  await page.getByLabel("Senha").fill(env[`E2E_${who}_PASSWORD`]);
+  await page.getByLabel("Senha", { exact: true }).fill(env[`E2E_${who}_PASSWORD`]);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   // Login conclui quando sai de /entrar (cookie de sessão gravado).
   await page.waitForURL((u) => !u.pathname.startsWith("/entrar"), { timeout: 15000 });
@@ -72,10 +72,25 @@ test.describe("P0 · proteção de rotas", () => {
     await ctx.close();
   });
 
-  test("admin da plataforma abre o Super Admin", async ({ browser }) => {
+  test("admin da plataforma abre o Super Admin; suspender e reativar ficam no histórico", async ({ browser }) => {
     const { ctx, page } = await login(browser, "ADMIN", "/super-admin");
     await page.waitForURL("**/super-admin");
     await expect(page.getByRole("heading", { name: "Visão da plataforma" })).toBeVisible();
+    const row = page.getByRole("row").filter({ hasText: SLUG.replace(/-/g, "") });
+    page.on("dialog", (d) => d.accept());
+    await row.getByRole("button", { name: "Suspender" }).click();
+    await expect(row.getByText("Suspensa")).toBeVisible();
+    await row.getByRole("button", { name: "Reativar" }).click();
+    await expect(row.getByText("Suspensa")).toHaveCount(0);
+    await expect(page.getByText("Suspendeu loja").first()).toBeVisible();
+    await expect(page.getByText("Reativou loja").first()).toBeVisible();
+    await ctx.close();
+  });
+
+  test("lojista não chama a API do Super Admin", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER");
+    const r = await page.request.patch("/api/admin/lojas/a8db0aac-0170-440f-a31c-f91ba5be4995", { data: { active: false } });
+    expect(r.status()).toBe(403);
     await ctx.close();
   });
 });

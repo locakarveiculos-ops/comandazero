@@ -1,39 +1,82 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- logos podem vir de upload */
-import { Activity, Building2, ExternalLink, KeyRound, Plus, RotateCcw, Rocket, ShoppingBag, Wallet } from "lucide-react";
-import { useClientValue } from "@/lib/use-client";
+/* eslint-disable @next/next/no-img-element -- logos vêm do Storage */
+import { Activity, Building2, ExternalLink, History, KeyRound, Rocket, ShoppingBag, Wallet } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo, SaasSurface, ThemeToggle } from "@/components/brand-switcher";
-import { useHydrated } from "@/components/providers";
-import { Badge, Button, Card, Field, Input, Modal, Select, Skeleton } from "@/components/ui";
+import { Badge, Button, Card, Select } from "@/components/ui";
 import { ROOT_DOMAIN, saasBrand } from "@/config/saas-brand";
-import { createTenant, resetDb, useDb } from "@/lib/repositories";
-import { readChannelBlob } from "@/lib/integrations/whatsapp/notify";
-import type { Plan, Tenant } from "@/lib/types";
-import { money, readableInk, round2, slugify } from "@/lib/utils";
+import { PLANS, planById } from "@/lib/plans";
+import type { Plan } from "@/lib/types";
+import { money, round2 } from "@/lib/utils";
 
-const PRICE: Record<Plan, number> = { starter: 89, pro: 179, enterprise: 399 };
+export type OverviewRow = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  logo_url: string | null;
+  is_demo: boolean;
+  active: boolean;
+  created_at: string;
+  plan: Plan;
+  sub_status: "trial" | "active" | "overdue" | "canceled" | null;
+  cycle: "monthly" | "yearly" | null;
+  monthly_value: number | null;
+  trial_ends_at: string | null;
+  overdue_since: string | null;
+  orders: number;
+  gmv: number;
+  last_order_at: string | null;
+  whatsapp_connected: boolean;
+  owner_email: string | null;
+};
+export type AuditRow = { id: number; actor_email: string | null; action: string; details: Record<string, unknown>; created_at: string };
 
-export function SuperAdminClient() {
-  const hydrated = useHydrated();
-  const tenants = useDb((s) => s.tenants);
-  const orders = useDb((s) => s.orders);
-  const [creating, setCreating] = useState(false);
+const STATUS: Record<NonNullable<OverviewRow["sub_status"]>, { label: string; tone: "green" | "amber" | "red" | "blue" | "neutral" }> = {
+  trial: { label: "Teste grátis", tone: "blue" },
+  active: { label: "Pagante", tone: "green" },
+  overdue: { label: "Em atraso", tone: "red" },
+  canceled: { label: "Cancelada", tone: "neutral" },
+};
+const ACTION: Record<string, string> = { "loja.suspender": "Suspendeu loja", "loja.reativar": "Reativou loja", "loja.plano": "Trocou plano", "assinatura.webhook": "Pagamento recebido" };
+const fmtDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+const daysLeft = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86_400_000);
+
+/** Visão da plataforma com dados reais do banco (lojas, assinaturas, pedidos). Demos ficam separadas e fora do MRR. */
+export function SuperAdminClient({ rows, audit }: { rows: OverviewRow[]; audit: AuditRow[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const real = rows.filter((r) => !r.is_demo);
+  const demos = rows.filter((r) => r.is_demo);
 
   const stats = useMemo(() => {
-    const active = tenants.filter((t) => t.active);
-    const gmv = round2(orders.filter((o) => o.status !== "cancelado").reduce((s, o) => s + o.total, 0));
-    return { mrr: active.reduce((s, t) => s + PRICE[t.plan], 0), count: active.length, orders: orders.length, gmv };
-  }, [tenants, orders]);
+    // MRR: só assinaturas pagantes (ativas ou em atraso ainda não canceladas), pelo valor contratado.
+    const paying = real.filter((r) => r.sub_status === "active" || r.sub_status === "overdue");
+    return {
+      mrr: round2(paying.reduce((s, r) => s + Number(r.monthly_value ?? 0), 0)),
+      paying: paying.length,
+      trial: real.filter((r) => r.sub_status === "trial").length,
+      orders: real.reduce((s, r) => s + Number(r.orders), 0),
+      gmv: round2(real.reduce((s, r) => s + Number(r.gmv), 0)),
+    };
+  }, [real]);
 
-  if (!hydrated) return <Skeleton className="m-6 h-96" />;
+  const patch = async (row: OverviewRow, body: { active?: boolean; plan?: Plan }) => {
+    if (body.active === false && !confirm(`Suspender ${row.name}? A loja sai do ar até ser reativada.`)) return;
+    setBusy(row.id);
+    const r = await fetch(`/api/admin/lojas/${row.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    setBusy(null);
+    if (!r.ok) return toast.error((await r.json().catch(() => ({}))).error ?? "Não foi possível salvar");
+    toast.success("Alteração salva e registrada no histórico");
+    router.refresh();
+  };
 
   return (
     <SaasSurface>
-      {/* Faixa executiva navy com a variante de logo para fundo escuro. */}
       <header className="sticky top-0 z-30 bg-cz-navy text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <Link href="/" aria-label="ComandaZero, início">
@@ -49,40 +92,28 @@ export function SuperAdminClient() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="cz-heading text-3xl font-bold">Visão da plataforma</h1>
-            <p className="text-sm text-cz-muted">{saasBrand.name} · todas as lojas, receita recorrente e saúde das integrações.</p>
+            <p className="text-sm text-cz-muted">{saasBrand.name} · lojas reais, assinaturas e uso. Demonstrações ficam fora dos números.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (!confirm("Restaurar os dados de demonstração? Pedidos e alterações feitos neste navegador serão apagados.")) return;
-                resetDb();
-                toast.success("Dados de demonstração restaurados");
-              }}
-            >
-              <RotateCcw className="size-4" aria-hidden /> Restaurar demo
-            </Button>
-            <Button variant="brand" size="lg" onClick={() => setCreating(true)}>
-              <Rocket className="size-4" aria-hidden /> Criar novo estabelecimento
-            </Button>
-          </div>
+          <Link href="/onboarding" className="inline-flex min-h-12 items-center gap-2 rounded-[10px] bg-brand px-6 font-semibold text-brand-ink">
+            <Rocket className="size-4" aria-hidden /> Criar novo estabelecimento
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Kpi icon={Wallet} label="MRR" value={money(stats.mrr)} />
-          <Kpi icon={Building2} label="Lojas ativas" value={String(stats.count)} />
-          <Kpi icon={ShoppingBag} label="Pedidos processados" value={stats.orders.toLocaleString("pt-BR")} />
+          <Kpi icon={Wallet} label="MRR" value={money(stats.mrr)} hint={`${stats.paying} pagante(s)`} />
+          <Kpi icon={Building2} label="Lojas reais" value={String(real.length)} hint={`${stats.trial} em teste grátis`} />
+          <Kpi icon={ShoppingBag} label="Pedidos (lojas reais)" value={stats.orders.toLocaleString("pt-BR")} />
           <Kpi icon={Activity} label="Volume transacionado" value={money(stats.gmv)} />
         </div>
 
         <Card className="relative min-w-0 overflow-x-auto p-0">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <caption className="sr-only">Estabelecimentos cadastrados</caption>
-            <thead className="border-b border-cz-border text-xs uppercase tracking-wider text-cz-muted">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <caption className="p-4 text-left font-bold">Estabelecimentos</caption>
+            <thead className="border-y border-cz-border text-xs uppercase tracking-wider text-cz-muted">
               <tr>
                 <th className="p-4">Estabelecimento</th>
+                <th className="p-4">Assinatura</th>
                 <th className="p-4">Plano</th>
-                <th className="p-4">Subdomínio</th>
                 <th className="p-4">Pedidos</th>
                 <th className="p-4">WhatsApp</th>
                 <th className="p-4">
@@ -91,8 +122,76 @@ export function SuperAdminClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-cz-border">
-              {tenants.map((t) => (
-                <TenantRow key={t.id} t={t} orders={orders.filter((o) => o.tenantId === t.id).length} />
+              {real.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-cz-muted">
+                    Nenhuma loja real ainda. Quando alguém criar a conta e a loja, ela aparece aqui.
+                  </td>
+                </tr>
+              )}
+              {[...real, ...demos].map((r) => (
+                <tr key={r.id} className={r.active ? undefined : "opacity-60"}>
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      {r.logo_url ? <img src={r.logo_url} alt="" className="size-10 rounded-full border border-cz-border object-cover" /> : <span className="grid size-10 place-items-center rounded-full bg-cz-surface-2 font-bold">{r.name.slice(0, 1)}</span>}
+                      <div>
+                        <p className="font-semibold">
+                          {r.name} {r.is_demo && <Badge tone="amber">Demonstração</Badge>} {!r.active && <Badge tone="red">Suspensa</Badge>}
+                        </p>
+                        <p className="text-xs text-cz-muted">
+                          {r.owner_email ?? "sem dono"} · {r.slug.replace(/-/g, "")}.{ROOT_DOMAIN}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    {r.is_demo || !r.sub_status ? (
+                      <span className="text-cz-muted">—</span>
+                    ) : (
+                      <div className="grid gap-0.5">
+                        <Badge tone={STATUS[r.sub_status].tone}>{STATUS[r.sub_status].label}</Badge>
+                        <span className="text-xs text-cz-muted">
+                          {r.sub_status === "trial" && r.trial_ends_at ? (daysLeft(r.trial_ends_at) >= 0 ? `${daysLeft(r.trial_ends_at)} dia(s) restantes` : "teste vencido") : r.monthly_value ? `${money(Number(r.monthly_value))}/mês` : ""}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {r.is_demo ? (
+                      planById(r.plan).name
+                    ) : (
+                      <Select aria-label={`Plano de ${r.name}`} value={r.plan} disabled={busy === r.id} onChange={(e) => patch(r, { plan: e.target.value as Plan })} className="min-w-36">
+                        {PLANS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </td>
+                  <td className="p-4 tabular-nums">
+                    {Number(r.orders).toLocaleString("pt-BR")}
+                    {r.last_order_at && <span className="block text-xs text-cz-muted">último {fmtDate(r.last_order_at)}</span>}
+                  </td>
+                  <td className="p-4">
+                    <Badge tone={r.whatsapp_connected ? "green" : "neutral"}>{r.whatsapp_connected ? "Conectado" : "Não conectado"}</Badge>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-1">
+                      <Link href={`/painel/${r.slug}`} className="inline-flex min-h-11 items-center rounded-full px-3 font-semibold hover:bg-cz-surface-2">
+                        Painel
+                      </Link>
+                      <Link href={`/loja/${r.slug}`} target="_blank" className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 font-semibold hover:bg-cz-surface-2">
+                        Loja <ExternalLink className="size-3.5" aria-hidden />
+                      </Link>
+                      {!r.is_demo && (
+                        <Button variant="ghost" size="sm" loading={busy === r.id} onClick={() => patch(r, { active: !r.active })}>
+                          {r.active ? "Suspender" : "Reativar"}
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -100,171 +199,56 @@ export function SuperAdminClient() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <h2 className="font-bold">Planos</h2>
-            <ul className="mt-3 grid gap-2">
-              {(Object.keys(PRICE) as Plan[]).map((p) => (
-                <li key={p} className="flex items-center justify-between rounded-xl bg-cz-surface-2 p-3 text-sm">
-                  <span className="font-semibold capitalize">{p}</span>
-                  <span className="text-cz-muted">{tenants.filter((t) => t.plan === p).length} loja(s)</span>
-                  <span className="font-bold tabular-nums">{money(PRICE[p])}/mês</span>
-                </li>
-              ))}
-            </ul>
+            <h2 className="flex items-center gap-2 font-bold">
+              <History className="size-4" aria-hidden /> Histórico de ações
+            </h2>
+            {audit.length === 0 ? (
+              <p className="mt-3 text-sm text-cz-muted">Nenhuma ação registrada ainda.</p>
+            ) : (
+              <ol className="mt-3 grid gap-2 text-sm">
+                {audit.map((a) => (
+                  <li key={a.id} className="flex flex-wrap justify-between gap-2 rounded-xl bg-cz-surface-2 p-3">
+                    <span>
+                      <b>{ACTION[a.action] ?? a.action}</b> {typeof a.details?.slug === "string" && <span className="text-cz-muted">· {a.details.slug}</span>}
+                    </span>
+                    <span className="text-xs text-cz-muted">
+                      {a.actor_email ?? "sistema"} · {new Date(a.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
           <Card>
-            <h2 className="flex items-center gap-2 font-bold">
-              <KeyRound className="size-4" aria-hidden /> Chaves globais (só no servidor)
-            </h2>
-            <p className="mt-1 text-sm text-cz-muted">Ficam em variáveis de ambiente da Vercel. Nunca no navegador.</p>
-            <ul className="mt-3 grid gap-2 font-mono text-xs">
-              {[
-                ["WHAILEYS_PARTNER_KEY", "Cria instâncias cpw-* (um número por loja)"],
-                ["CHANNEL_SEAL_KEY", "Cifra credenciais dos canais (AES-256-GCM)"],
-                ["WA_PROVISION_KEY", "Código de ativação entregue ao lojista"],
-                ["RESEND_API_KEY", "Resend master key"],
-                ["CLOUDFLARE_API_TOKEN", "DNS wildcard *." + ROOT_DOMAIN],
-                ["EVOLUTION_API_KEY", "Evolution server global"],
-              ].map(([k, d]) => (
-                <li key={k} className="flex flex-wrap justify-between gap-2 rounded-lg bg-cz-surface-2 p-2.5">
-                  <b>{k}</b>
-                  <span className="font-sans text-cz-muted">{d}</span>
+            <h2 className="font-bold">Planos</h2>
+            <ul className="mt-3 grid gap-2">
+              {PLANS.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl bg-cz-surface-2 p-3 text-sm">
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="text-cz-muted">{real.filter((r) => r.plan === p.id).length} loja(s)</span>
+                  <span className="font-bold tabular-nums">{money(p.monthly)}/mês</span>
                 </li>
               ))}
             </ul>
+            <h2 className="mt-5 flex items-center gap-2 font-bold">
+              <KeyRound className="size-4" aria-hidden /> Chaves globais (só no servidor)
+            </h2>
+            <p className="mt-1 text-sm text-cz-muted">Ficam nas variáveis de ambiente da Vercel. Nunca no navegador.</p>
           </Card>
         </div>
       </main>
-      <Onboarding open={creating} onOpenChange={setCreating} />
     </SaasSurface>
   );
 }
 
-function TenantRow({ t, orders }: { t: Tenant; orders: number }) {
-  const wa = useClientValue(() => !!readChannelBlob(t.slug), false);
-  return (
-    <tr>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <img src={t.logo} alt="" className="size-10 rounded-full border border-cz-border object-cover" />
-          <div>
-            <p className="font-semibold">{t.name}</p>
-            <p className="text-xs text-cz-muted">{t.category}</p>
-          </div>
-        </div>
-      </td>
-      <td className="p-4">
-        <Badge tone={t.plan === "pro" ? "blue" : t.plan === "enterprise" ? "amber" : "neutral"}>{t.plan}</Badge>
-      </td>
-      <td className="p-4 font-mono text-xs">
-        {t.subdomain}.{ROOT_DOMAIN}
-      </td>
-      <td className="p-4 tabular-nums">{orders}</td>
-      <td className="p-4">
-        <Badge tone={wa ? "green" : "neutral"}>{wa ? "Canal criado" : "Não conectado"}</Badge>
-      </td>
-      <td className="p-4">
-        <div className="flex justify-end gap-2">
-          <Link href={`/painel/${t.slug}`} className="inline-flex min-h-11 items-center rounded-full px-3 font-semibold hover:bg-cz-surface-2">
-            Painel
-          </Link>
-          <Link href={`/loja/${t.slug}`} target="_blank" className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 font-semibold hover:bg-cz-surface-2">
-            Loja <ExternalLink className="size-3.5" aria-hidden />
-          </Link>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function Onboarding({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const tenants = useDb((s) => s.tenants);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("Padaria");
-  const [color, setColor] = useState("#8A3B12");
-  const [plan, setPlan] = useState<Plan>("pro");
-  const [whatsapp, setWhatsapp] = useState("");
-  const slug = slugify(name);
-  const taken = tenants.some((t) => t.slug === slug);
-
-  const create = () => {
-    if (slug.length < 3) return toast.error("Nome muito curto");
-    if (taken) return toast.error("Já existe uma loja com esse endereço");
-    const base = tenants[0];
-    const t: Tenant = {
-      ...base,
-      id: `t_${slug}`,
-      slug,
-      name: name.trim(),
-      tagline: `${category} · peça pelo app`,
-      description: `Cardápio digital de ${name.trim()}.`,
-      category,
-      logo: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="50" fill="${color}"/><text x="50" y="62" font-family="Arial" font-size="40" font-weight="bold" text-anchor="middle" fill="${readableInk(color)}">${name.trim().slice(0, 1).toUpperCase()}</text></svg>`)}`,
-      theme: { ...base.theme, primary: color, primaryInk: readableInk(color), accent: color, dark: false },
-      whatsapp: whatsapp.replace(/\D/g, "") ? `55${whatsapp.replace(/\D/g, "").replace(/^55/, "")}` : base.whatsapp,
-      instagram: slug.replace(/-/g, ""),
-      subdomain: slug.replace(/-/g, "").slice(0, 30),
-      plan,
-      rating: 5,
-      ratingCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-    createTenant(t);
-    toast.success(`${t.name} criada! Loja e PWA no ar.`, { action: { label: "Abrir loja", onClick: () => window.open(`/loja/${slug}`, "_blank") } });
-    onOpenChange(false);
-    setName("");
-  };
-
-  return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Onboarding em 1 minuto" description="Cria a loja, o app instalável e o subdomínio.">
-      <div className="grid gap-4 p-5">
-        <Field label="Nome do estabelecimento" id="ob-name" error={taken ? "Endereço já usado" : undefined} hint={slug ? `/loja/${slug} · ${slug.replace(/-/g, "")}.${ROOT_DOMAIN}` : undefined}>
-          <Input id="ob-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Padaria Pão Dourado" aria-invalid={taken} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tipo" id="ob-cat">
-            <Select id="ob-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {["Padaria", "Cafeteria", "Confeitaria", "Lanchonete", "Hamburgueria", "Açaí"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Plano" id="ob-plan">
-            <Select id="ob-plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-              {(Object.keys(PRICE) as Plan[]).map((p) => (
-                <option key={p} value={p}>
-                  {p} · {money(PRICE[p])}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <Field label="WhatsApp da loja" id="ob-wa">
-            <Input id="ob-wa" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="(19) 99999-0000" />
-          </Field>
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Cor
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-11 w-16 cursor-pointer rounded-xl border border-cz-border" />
-          </label>
-        </div>
-        <p className="rounded-xl bg-cz-surface-2 p-3 text-xs text-cz-muted">
-          O cardápio começa com os produtos modelo; o lojista edita em Cardápio & estoque. Na Fase 2 este botão também cria o registro DNS na Cloudflare e o domínio na Vercel.
-        </p>
-        <Button variant="brand" size="lg" onClick={create} disabled={!name.trim() || taken}>
-          <Plus className="size-4" aria-hidden /> Criar e publicar
-        </Button>
-      </div>
-    </Modal>
-  );
-}
-
-function Kpi({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
+function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Wallet; label: string; value: string; hint?: string }) {
   return (
     <Card className="p-4">
       <p className="flex items-center gap-2 text-sm text-cz-muted">
         <Icon className="size-4" aria-hidden /> {label}
       </p>
       <p className="mt-1 text-2xl font-extrabold tabular-nums">{value}</p>
+      {hint && <p className="text-xs text-cz-muted">{hint}</p>}
     </Card>
   );
 }
