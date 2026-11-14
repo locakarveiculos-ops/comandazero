@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useDb, useIntegrations } from "@/lib/repositories";
 import { subscribe } from "@/lib/repositories/events";
+import { reloadFromStorageAsync } from "@/lib/repositories/store";
 import { notifyOrder, triggerForStatus } from "@/lib/integrations/whatsapp/notify";
 import { chime } from "@/lib/sound";
 import type { Order, Tenant } from "@/lib/types";
@@ -32,12 +33,13 @@ export function useOrderAlerts(tenant: Tenant | undefined, opts: { sound?: boole
       if (e.type === "table:call") return;
       const order = () => useDb.getState().orders.find((x) => x.id === e.orderId);
       if (e.type === "order:new") {
-        if (!local) {
-          if (snd && o.sound !== false) chime("order");
-          toast.success(`Novo pedido #${e.number}`, { description: describe(order()) });
-        }
-        // Só a aba que criou o pedido OU o painel (quando o pedido veio do cliente) envia, evitando mensagem duplicada.
-        if (o.notify && !local) void send("recebido", order(), t, s);
+        if (local) return;
+        if (snd && o.sound !== false) chime("order");
+        // O aviso chega antes do estado gravado ser aplicado nesta aba: espera o pedido aparecer e só então usa.
+        void waitFor(order).then((found) => {
+          toast.success(`Novo pedido #${e.number}`, { description: describe(found) });
+          if (o.notify) void send("recebido", found, t, s);
+        });
       }
       if (e.type === "order:status" && local && o.notify) {
         const trig = triggerForStatus(e.status as Order["status"]);
@@ -45,6 +47,17 @@ export function useOrderAlerts(tenant: Tenant | undefined, opts: { sound?: boole
       }
     });
   }, []);
+}
+
+/** Recarrega o estado salvo até o item existir (recargas concorrentes de outras abas podem chegar fora de ordem). */
+async function waitFor<T>(get: () => T | undefined, tries = 12): Promise<T | undefined> {
+  for (let i = 0; i < tries; i++) {
+    const v = get();
+    if (v) return v;
+    await reloadFromStorageAsync();
+    if (!get()) await new Promise((r) => setTimeout(r, 120));
+  }
+  return get();
 }
 
 const describe = (o?: Order) => (o ? `${o.customer.name || "Balcão"} · ${o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}`.slice(0, 120) : undefined);

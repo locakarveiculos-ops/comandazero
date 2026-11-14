@@ -7,8 +7,9 @@ import { STORAGE_KEY } from "@/lib/repositories/store";
 import { subscribe } from "@/lib/repositories/events";
 import { unlockAudio } from "@/lib/sound";
 
-/** Hidrata o banco local, sincroniza entre abas e aplica a marca do SaaS escolhida no seletor. */
+/** Hidrata o banco local, sincroniza entre abas e registra o service worker. */
 export function Providers({ children }: { children: ReactNode }) {
+  const saasTheme = useDb((s) => s.saasTheme);
   useEffect(() => {
     void useDb.persist.rehydrate();
     onStorageError((msg) => toast.error(msg));
@@ -34,7 +35,14 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <Toaster position="top-center" richColors closeButton toastOptions={{ style: { fontFamily: "var(--font-sans)" } }} />
+      {/* Toasts ficam num portal no <body>: estilo próprio, legível sobre o SaaS e sobre qualquer loja. */}
+      <Toaster
+        position="top-center"
+        richColors
+        closeButton
+        theme={saasTheme}
+        toastOptions={{ style: { fontFamily: "var(--font-sans)", borderRadius: 10 }, classNames: { closeButton: "!size-6" } }}
+      />
     </>
   );
 }

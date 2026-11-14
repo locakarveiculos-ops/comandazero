@@ -126,3 +126,8 @@ export function resetDb() {
 export function reloadFromStorage() {
   void useDb.persist.rehydrate();
 }
+
+/** Recarrega o estado salvo e só resolve quando ele já está aplicado (para quem precisa do dado em seguida). */
+export async function reloadFromStorageAsync() {
+  await useDb.persist.rehydrate();
+}

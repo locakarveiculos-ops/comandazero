@@ -111,6 +111,7 @@ function WhatsappTab({ settings, set }: TabProps) {
   const isWhaileys = !kind.startsWith("evo");
   const send = async () => {
     if (!isValidBrPhone(to)) return toast.error("Telefone com DDD");
+    if (!isWhaileys) return sendEvolution();
     const blob = readChannelBlob(tenant.slug);
     if (!blob) return toast.error("Conecte o WhatsApp da loja primeiro (acima).");
     setSending(true);
@@ -119,6 +120,30 @@ function WhatsappTab({ settings, set }: TabProps) {
       const d = (await r.json().catch(() => ({}))) as { error?: string; messageId?: string };
       if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
       toast.success(`Enviado! id ${d.messageId?.slice(0, 10)}…`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Evolution: a URL e a chave ficam no servidor; o painel só manda instância, destino e conteúdo.
+  const sendEvolution = async () => {
+    const body = (payload as { body: { text?: string; textMessage?: { text: string }; media?: string; mediaMessage?: { media: string; caption: string }; caption?: string } }).body;
+    setSending(true);
+    try {
+      const r = await fetch("/api/whatsapp/evolution", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          kind === "evo-text"
+            ? { op: "sendText", instance: w.evolution.instance || tenant.slug, to, text: body.text ?? body.textMessage?.text }
+            : { op: "sendMedia", instance: w.evolution.instance || tenant.slug, to, url: body.media ?? body.mediaMessage?.media, caption: body.caption ?? body.mediaMessage?.caption },
+        ),
+      });
+      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      toast.success("Enviado pela Evolution API");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -157,7 +182,7 @@ function WhatsappTab({ settings, set }: TabProps) {
               <Input id="evo-inst" value={w.evolution.instance} placeholder={tenant.slug} onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, instance: e.target.value } } }))} />
             </Field>
             <p className="rounded-xl bg-cz-surface-2 p-3 text-xs text-cz-muted">
-              A API key fica só no servidor, na variável <code>{w.evolution.apiKeyRef}</code>. Criar instância: <code>POST {evolution.createInstance(w.evolution.instance || tenant.slug, "…").path}</code> · QR: <code>GET {evolution.connect(w.evolution.instance || tenant.slug).path}</code>
+              URL e API key ficam só no servidor (<code>EVOLUTION_API_URL</code>, <code>{w.evolution.apiKeyRef}</code>). Criar instância: <code>POST {evolution.createInstance(w.evolution.instance || tenant.slug, "…").path}</code> · QR: <code>GET {evolution.connect(w.evolution.instance || tenant.slug).path}</code>
             </p>
           </div>
         )}
@@ -204,13 +229,10 @@ function WhatsappTab({ settings, set }: TabProps) {
           <p className="mb-1 text-xs font-semibold text-cz-muted">{isWhaileys ? "POST /sessions/cpw-" + tenant.slug + "/send" : `${(payload as { method: string }).method} ${(payload as { path: string }).path}`}</p>
           <pre className="max-h-72 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify(isWhaileys ? { to: toWhatsappNumber(to), ...payload } : (payload as { body: unknown }).body, null, 2)}</pre>
         </div>
-        {isWhaileys ? (
-          <Button variant="brand" onClick={send} loading={sending}>
-            <Send className="size-4" aria-hidden /> Enviar de verdade pelo WhatsApp da loja
-          </Button>
-        ) : (
-          <p className="text-xs text-cz-muted">Envio Evolution usa a API key do servidor (Fase 2). O payload acima é o formato oficial.</p>
-        )}
+        <Button variant="brand" onClick={send} loading={sending}>
+          <Send className="size-4" aria-hidden /> {isWhaileys ? "Enviar de verdade pelo WhatsApp da loja" : "Enviar pela Evolution API"}
+        </Button>
+        {!isWhaileys && <p className="text-xs text-cz-muted">Usa EVOLUTION_API_URL e EVOLUTION_API_KEY do servidor. Sem elas, o envio informa que não está configurado.</p>}
       </Card>
     </div>
   );
@@ -219,20 +241,20 @@ function WhatsappTab({ settings, set }: TabProps) {
 function ChatPreview({ card }: { card: { text: string; buttons?: { id: string; title: string }[]; sections?: { rows: { id: string; title: string; description?: string }[] }[]; buttonText?: string } }) {
   return (
     <div className="rounded-2xl bg-[#e9ddd1] p-4" aria-label="Prévia da conversa no WhatsApp">
-      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-cz-surface p-3 text-sm text-cz-text shadow-sm">
+      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white p-3 text-sm text-[#111b21] shadow-sm">
         <p className="whitespace-pre-wrap">{card.text}</p>
       </div>
       {card.buttons && (
         <div className="mt-1 grid max-w-[85%] gap-1">
           {card.buttons.map((b) => (
-            <span key={b.id} className="rounded-xl bg-cz-surface py-2 text-center text-sm font-semibold text-[#1d4f85] shadow-sm">
+            <span key={b.id} className="rounded-xl bg-white py-2 text-center text-sm font-semibold text-[#1d4f85] shadow-sm">
               {b.title}
             </span>
           ))}
         </div>
       )}
       {card.sections && (
-        <span className="mt-1 block max-w-[85%] rounded-xl bg-cz-surface py-2 text-center text-sm font-semibold text-[#1d4f85] shadow-sm">☰ {card.buttonText}</span>
+        <span className="mt-1 block max-w-[85%] rounded-xl bg-white py-2 text-center text-sm font-semibold text-[#1d4f85] shadow-sm">☰ {card.buttonText}</span>
       )}
     </div>
   );

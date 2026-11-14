@@ -61,7 +61,7 @@ export function Landing() {
           </nav>
           <div className="ml-auto flex items-center gap-2 md:ml-0">
             <ThemeToggle />
-            <Link href="/painel" className="hidden min-h-11 items-center rounded-[10px] bg-brand px-4 text-sm font-semibold text-brand-ink hover:opacity-90 sm:inline-flex">
+            <Link href="/entrar" className="hidden min-h-11 items-center rounded-[10px] bg-brand px-4 text-sm font-semibold text-brand-ink hover:opacity-90 sm:inline-flex">
               Entrar no painel
             </Link>
           </div>
@@ -176,14 +176,14 @@ function Devices() {
           <span className="flex gap-1">
             <i className="size-2 rounded-full bg-[#16845b]" />
             <i className="size-2 rounded-full bg-[#e0a43a]" />
-            <i className="size-2 rounded-full bg-[#d64545]" />
+            <i className="size-2 rounded-full bg-[#b43838]" />
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
             ["#1042", "4 min", "bg-[#16845b] text-white", "2× Cappuccino", "1× Croissant 4 queijos"],
             ["#1039", "13 min", "bg-[#e0a43a] text-[#2b1a05]", "1× Espresso & Misto", "⚠ pão bem tostado"],
-            ["#1035", "22 min", "bg-[#d64545] text-white", "Bolo de festa 2,5 kg", "Retirada 16h"],
+            ["#1035", "22 min", "bg-[#b43838] text-white", "Bolo de festa 2,5 kg", "Retirada 16h"],
           ].map(([n, t, c, a, b]) => (
             <div key={n} className="overflow-hidden rounded-lg bg-[#faf8f5] text-[#0b1f40]">
               <div className={`flex justify-between px-2 py-1 text-[10px] font-bold ${c}`}>

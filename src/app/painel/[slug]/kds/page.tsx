@@ -21,7 +21,7 @@ const COLS: { status: OrderStatus; title: string; next?: OrderStatus; prev?: Ord
 const LEVEL = {
   ok: "bg-[#16845b] text-white",
   warn: "bg-[#e0a43a] text-[#2b1a05]",
-  late: "bg-[#c93a3a] text-white",
+  late: "bg-[#b43838] text-white",
 };
 
 export default function KdsPage() {
@@ -56,7 +56,7 @@ export default function KdsPage() {
         <p className="hidden items-center gap-3 text-xs sm:flex" aria-label="Legenda de tempo">
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#16845b]" /> &lt; 10 min</span>
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#e0a43a]" /> &lt; 20 min</span>
-          <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#c93a3a]" /> &gt; 20 min</span>
+          <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#b43838]" /> &gt; 20 min</span>
         </p>
         <button type="button" onClick={() => mutate((s) => ({ soundOn: !s.soundOn }))} aria-pressed={soundOn} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-3 text-sm font-semibold hover:bg-white/10">
           {soundOn ? <Bell className="size-4" aria-hidden /> : <BellOff className="size-4" aria-hidden />} Som

@@ -26,11 +26,7 @@ export function InstallApp({ tenant }: { tenant: Tenant }) {
   const [iosHelp, setIosHelp] = useState(false);
 
   useEffect(() => {
-    // Manifest exclusivo desta loja (substitui o do SaaS enquanto a página da loja está aberta).
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]') ?? document.head.appendChild(Object.assign(document.createElement("link"), { rel: "manifest" }));
-    const previous = link.href;
-    const custom = new URLSearchParams({ n: tenant.name, c: tenant.theme.primary, b: tenant.theme.paper });
-    link.href = `/api/manifest/${tenant.slug}?${custom}`;
+    // Manifest da loja: definido pelo servidor (metadata de /loja/[slug]); não manipular <link> geridos pelo React.
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const prevTheme = theme?.content;
     if (theme) theme.content = tenant.theme.primary;
@@ -46,7 +42,6 @@ export function InstallApp({ tenant }: { tenant: Tenant }) {
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
-      link.href = previous;
       if (theme && prevTheme) theme.content = prevTheme;
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);

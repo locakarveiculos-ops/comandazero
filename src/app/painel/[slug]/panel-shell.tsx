@@ -167,7 +167,7 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
             type="button"
             onClick={() => mutate((s) => ({ soundOn: !s.soundOn }))}
             aria-pressed={soundOn}
-            className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-cz-border bg-cz-surface px-3 text-sm font-semibold hover:bg-cz-surface-2"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[10px] border border-cz-border bg-cz-surface px-3 text-sm font-semibold hover:bg-cz-surface-2"
           >
             {soundOn ? <Bell className="size-4" aria-hidden /> : <BellOff className="size-4" aria-hidden />}
             <span className="hidden sm:inline">Som {soundOn ? "ligado" : "desligado"}</span>

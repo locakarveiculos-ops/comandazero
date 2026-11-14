@@ -46,3 +46,14 @@ next-env.d.ts
 
 # kit de marca original (assets de produção ficam em public/brand/comandazero)
 _brandkit/
+
+# credenciais (nunca versionar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+.vercel
+playwright-report/
+test-results/
