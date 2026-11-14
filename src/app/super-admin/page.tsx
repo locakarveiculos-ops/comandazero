@@ -45,7 +45,7 @@ export default function SuperAdmin() {
           </div>
         </div>
       </header>
-      <main id="conteudo" className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-6">
+      <main id="conteudo" className="mx-auto grid min-w-0 max-w-7xl gap-6 p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="cz-heading text-3xl font-bold">Visão da plataforma</h1>
@@ -75,7 +75,7 @@ export default function SuperAdmin() {
           <Kpi icon={Activity} label="Volume transacionado" value={money(stats.gmv)} />
         </div>
 
-        <Card className="overflow-x-auto p-0">
+        <Card className="relative min-w-0 overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-left text-sm">
             <caption className="sr-only">Estabelecimentos cadastrados</caption>
             <thead className="border-b border-cz-border text-xs uppercase tracking-wider text-cz-muted">

@@ -45,13 +45,13 @@ export default function CardapioPage() {
           <h1 className="cz-heading text-2xl font-bold">Cardápio & estoque rápido</h1>
           <p className="text-sm text-cz-muted">Pausar um item some do cardápio na hora, em todos os aparelhos. {paused > 0 && <b>{paused} pausado(s).</b>}</p>
         </div>
-        <Button variant="brand" onClick={() => setEditing(blank())}>
+        <Button variant="brand" onClick={() => setEditing(blank())} data-tour="cardapio-novo">
           <Plus className="size-4" aria-hidden /> Novo produto
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Filtrar">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="no-scrollbar flex min-w-0 max-w-full gap-2 overflow-x-auto" role="tablist" aria-label="Filtrar" data-tour="cardapio-filtros">
           {[{ id: "all", name: "Todos" }, ...categories, { id: "off", name: "Pausados" }].map((c) => (
             <button key={c.id} role="tab" aria-selected={filter === c.id} onClick={() => setFilter(c.id)} className={cn("min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold", filter === c.id ? "bg-brand text-brand-ink" : "bg-cz-surface ring-1 ring-cz-border")}>
               {c.name}
@@ -59,7 +59,7 @@ export default function CardapioPage() {
           ))}
         </div>
         <form
-          className="ml-auto flex gap-2"
+          className="flex w-full gap-2 sm:ml-auto sm:w-auto"
           onSubmit={(e) => {
             e.preventDefault();
             if (!newCat.trim()) return;
@@ -68,14 +68,14 @@ export default function CardapioPage() {
             setNewCat("");
           }}
         >
-          <Input aria-label="Nova categoria" value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Nova categoria" className="w-44" />
+          <Input aria-label="Nova categoria" value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Nova categoria" className="min-w-0 flex-1 sm:w-44 sm:flex-none" />
           <Button variant="secondary" type="submit">
             Criar
           </Button>
         </form>
       </div>
 
-      <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3" data-tour="cardapio-lista">
         {list.map((p) => (
           <li key={p.id}>
             <Card className={cn("flex gap-3 p-3", !p.available && "bg-cz-surface-2")}>

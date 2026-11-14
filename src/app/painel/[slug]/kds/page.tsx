@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-switcher";
+import { HelpButton } from "@/components/training/help-button";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { setOrderStatus, useDb, useOrders } from "@/lib/repositories";
 import { mutate } from "@/lib/repositories/store";
@@ -53,7 +54,7 @@ export default function KdsPage() {
         <h1 className="cz-heading flex-1 text-xl font-bold">
           KDS · {tenant.name}
         </h1>
-        <p className="hidden items-center gap-3 text-xs sm:flex" aria-label="Legenda de tempo">
+        <p className="hidden items-center gap-3 text-xs sm:flex" aria-label="Legenda de tempo" data-tour="kds-legenda">
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#16845b]" /> &lt; 10 min</span>
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#e0a43a]" /> &lt; 20 min</span>
           <span className="flex items-center gap-1"><i className="size-3 rounded-full bg-[#b43838]" /> &gt; 20 min</span>
@@ -61,6 +62,7 @@ export default function KdsPage() {
         <button type="button" onClick={() => mutate((s) => ({ soundOn: !s.soundOn }))} aria-pressed={soundOn} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-3 text-sm font-semibold hover:bg-white/10">
           {soundOn ? <Bell className="size-4" aria-hidden /> : <BellOff className="size-4" aria-hidden />} Som
         </button>
+        <HelpButton slug={slug} className="border-white/20 bg-transparent text-white hover:bg-white/10" />
         <button type="button" onClick={toggleFs} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-3 text-sm font-semibold hover:bg-white/10">
           {full ? <Minimize className="size-4" aria-hidden /> : <Maximize className="size-4" aria-hidden />} Tela cheia
         </button>
@@ -70,7 +72,7 @@ export default function KdsPage() {
         {COLS.map((col) => {
           const list = active.filter((o) => o.status === col.status);
           return (
-            <section key={col.status} className="flex min-h-0 flex-col rounded-[14px] bg-[#132747]" aria-labelledby={`col-${col.status}`}>
+            <section key={col.status} data-tour={`kds-${col.status}`} className="flex min-h-0 flex-col rounded-[14px] bg-[#132747]" aria-labelledby={`col-${col.status}`}>
               <h2 id={`col-${col.status}`} className="flex items-center justify-between px-4 py-3 text-sm font-bold uppercase tracking-wider text-[#c5cbd5]">
                 {col.title} <span className="rounded-full bg-white/10 px-2.5 py-0.5 tabular-nums text-white">{list.length}</span>
               </h2>

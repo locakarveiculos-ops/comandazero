@@ -9,6 +9,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
+  GraduationCap,
   Heart,
   LayoutGrid,
   ListOrdered,
@@ -22,11 +23,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/brand-switcher";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useOrderAlerts } from "@/components/painel/use-panel";
 import { Skeleton } from "@/components/ui";
+import { HelpButton, WelcomeTour } from "@/components/training/help-button";
+import { TourFromQuery } from "@/components/training/training-center";
 import { useDb, useOrders } from "@/lib/repositories";
 import { mutate } from "@/lib/repositories/store";
 import { useClientValue } from "@/lib/use-client";
@@ -42,6 +45,7 @@ const NAV = [
   { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart },
   { href: "/aparencia", label: "Marca do app", icon: Palette },
   { href: "/integracoes", label: "Integrações", icon: Plug },
+  { href: "/treinamento", label: "Central de treinamento", icon: GraduationCap },
 ];
 
 const COLLAPSE_KEY = "cz-sidebar-collapsed";
@@ -75,7 +79,15 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
         <Skeleton className="m-6 h-96" />
       </SaasSurface>
     );
-  if (fullscreen) return <SaasSurface forceTheme="dark">{children}</SaasSurface>;
+  if (fullscreen)
+    return (
+      <SaasSurface forceTheme="dark">
+        <Suspense>
+          <TourFromQuery slug={slug} />
+        </Suspense>
+        {children}
+      </SaasSurface>
+    );
 
   const toggleCollapse = () => {
     const next = !collapsed;
@@ -120,7 +132,7 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
   return (
     <SaasSurface className={cn("lg:grid", collapsed ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[264px_1fr]")}>
       {/* Sidebar navy: logo para fundo escuro (nunca navy sobre navy). */}
-      <aside className="hidden bg-cz-navy p-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:gap-5" aria-label="Navegação do painel">
+      <aside data-tour="menu-lateral" className="hidden bg-cz-navy p-3 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:gap-5" aria-label="Navegação do painel">
         <div className={cn("flex items-center pt-2", collapsed ? "justify-center" : "justify-between px-2")}>
           <Link href="/" aria-label="ComandaZero, início">
             {collapsed ? <BrandLogo variant="symbol" height={34} /> : <BrandLogo variant="compact" height={30} onDark />}
@@ -167,14 +179,20 @@ export function PanelShell({ slug, children }: { slug: string; children: ReactNo
             type="button"
             onClick={() => mutate((s) => ({ soundOn: !s.soundOn }))}
             aria-pressed={soundOn}
+            data-tour="som"
             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[10px] border border-cz-border bg-cz-surface px-3 text-sm font-semibold hover:bg-cz-surface-2"
           >
             {soundOn ? <Bell className="size-4" aria-hidden /> : <BellOff className="size-4" aria-hidden />}
             <span className="hidden sm:inline">Som {soundOn ? "ligado" : "desligado"}</span>
           </button>
+          <HelpButton slug={slug} />
           <ThemeToggle />
         </header>
-        <main id="conteudo" className="p-4 sm:p-6">
+        <main id="conteudo" className="min-w-0 p-4 sm:p-6">
+          <WelcomeTour slug={slug} />
+          <Suspense>
+            <TourFromQuery slug={slug} />
+          </Suspense>
           {children}
         </main>
       </div>

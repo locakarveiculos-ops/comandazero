@@ -1,0 +1,413 @@
+{
+  "version": "1.0.0",
+  "buildSha": "6d1edd0",
+  "capturedAt": "2026-11-14T21:22:01.035Z",
+  "tenant": "cafe-e-flor (demo)",
+  "screenshots": [
+    {
+      "name": "painel/dashboard-desktop",
+      "route": "/painel/cafe-e-flor",
+      "viewport": "desktop",
+      "state": "dashboard com dados demo",
+      "file": "/training/screenshots/1.0.0/painel/dashboard-desktop.webp",
+      "ok": true,
+      "articles": [
+        "visao-geral",
+        "visao-geral"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "painel/dashboard-mobile",
+      "route": "/painel/cafe-e-flor",
+      "viewport": "mobile",
+      "state": "dashboard no celular",
+      "file": "/training/screenshots/1.0.0/painel/dashboard-mobile.webp",
+      "ok": true,
+      "articles": [
+        "visao-geral"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pedidos/vazio",
+      "route": "/painel/cafe-e-flor/pedidos",
+      "viewport": "desktop",
+      "state": "sem pedidos em andamento",
+      "file": "/training/screenshots/1.0.0/pedidos/vazio.webp",
+      "ok": true,
+      "articles": [
+        "pedidos-fila"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/cardapio-mobile",
+      "route": "/loja/cafe-e-flor",
+      "viewport": "mobile",
+      "state": "cardápio no celular",
+      "file": "/training/screenshots/1.0.0/loja/cardapio-mobile.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/cardapio-desktop",
+      "route": "/loja/cafe-e-flor",
+      "viewport": "desktop",
+      "state": "cardápio no computador",
+      "file": "/training/screenshots/1.0.0/loja/cardapio-desktop.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/produto-modal",
+      "route": "/loja/cafe-e-flor",
+      "viewport": "desktop",
+      "state": "produto com opções e adicionais somados",
+      "file": "/training/screenshots/1.0.0/loja/produto-modal.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/checkout",
+      "route": "/loja/cafe-e-flor",
+      "viewport": "desktop",
+      "state": "carrinho com dados do cliente",
+      "file": "/training/screenshots/1.0.0/loja/checkout.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/pix",
+      "route": "/loja/cafe-e-flor",
+      "viewport": "desktop",
+      "state": "Pix com QR e copia e cola",
+      "file": "/training/screenshots/1.0.0/loja/pix.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "loja/acompanhamento",
+      "route": "/loja/cafe-e-flor/pedido/[id]",
+      "viewport": "desktop",
+      "state": "acompanhamento do pedido",
+      "file": "/training/screenshots/1.0.0/loja/acompanhamento.webp",
+      "ok": true,
+      "articles": [
+        "cliente-pedido"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pedidos/novo",
+      "route": "/painel/cafe-e-flor/pedidos",
+      "viewport": "desktop",
+      "state": "pedido novo destacado",
+      "file": "/training/screenshots/1.0.0/pedidos/novo.webp",
+      "ok": true,
+      "articles": [
+        "pedidos-fila",
+        "pedidos-fila"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "kds/com-pedido",
+      "route": "/painel/cafe-e-flor/kds",
+      "viewport": "desktop",
+      "state": "pedido na fila",
+      "file": "/training/screenshots/1.0.0/kds/com-pedido.webp",
+      "ok": true,
+      "articles": [
+        "kds-fluxo"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "kds/preparando",
+      "route": "/painel/cafe-e-flor/kds",
+      "viewport": "desktop",
+      "state": "pedido em preparo",
+      "file": "/training/screenshots/1.0.0/kds/preparando.webp",
+      "ok": true,
+      "articles": [
+        "kds-fluxo"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "kds/fila-desktop",
+      "route": "/painel/cafe-e-flor/kds",
+      "viewport": "desktop",
+      "state": "colunas vazias após entregar",
+      "file": "/training/screenshots/1.0.0/kds/fila-desktop.webp",
+      "ok": true,
+      "articles": [
+        "visao-geral",
+        "kds-fluxo"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/grade",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "grade de produtos",
+      "file": "/training/screenshots/1.0.0/pdv/grade.webp",
+      "ok": true,
+      "articles": [
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/venda",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "venda com dois itens",
+      "file": "/training/screenshots/1.0.0/pdv/venda.webp",
+      "ok": true,
+      "articles": [
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/pagamento",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "pagamento misto com parte no Pix",
+      "file": "/training/screenshots/1.0.0/pdv/pagamento.webp",
+      "ok": true,
+      "articles": [
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/troco",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "troco em dinheiro",
+      "file": "/training/screenshots/1.0.0/pdv/troco.webp",
+      "ok": true,
+      "articles": [
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/dividir",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "divisão por pessoa",
+      "file": "/training/screenshots/1.0.0/pdv/dividir.webp",
+      "ok": true,
+      "articles": [
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "pdv/cupom",
+      "route": "/painel/cafe-e-flor/pdv",
+      "viewport": "desktop",
+      "state": "cupom não fiscal 80 mm",
+      "file": "/training/screenshots/1.0.0/pdv/cupom.webp",
+      "ok": true,
+      "articles": [
+        "pedidos-fila",
+        "pdv-venda"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "mesas/comanda",
+      "route": "/painel/cafe-e-flor/mesas",
+      "viewport": "desktop",
+      "state": "comanda aberta com itens",
+      "file": "/training/screenshots/1.0.0/mesas/comanda.webp",
+      "ok": true,
+      "articles": [
+        "mesas-qr",
+        "mesas-qr"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "mesas/mapa",
+      "route": "/painel/cafe-e-flor/mesas",
+      "viewport": "desktop",
+      "state": "mapa com mesa ocupada",
+      "file": "/training/screenshots/1.0.0/mesas/mapa.webp",
+      "ok": true,
+      "articles": [
+        "mesas-qr"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "mesas/qr",
+      "route": "/painel/cafe-e-flor/mesas",
+      "viewport": "desktop",
+      "state": "QR Codes para impressão",
+      "file": "/training/screenshots/1.0.0/mesas/qr.webp",
+      "ok": true,
+      "articles": [
+        "mesas-qr"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "cardapio/lista",
+      "route": "/painel/cafe-e-flor/cardapio",
+      "viewport": "desktop",
+      "state": "lista de produtos",
+      "file": "/training/screenshots/1.0.0/cardapio/lista.webp",
+      "ok": true,
+      "articles": [
+        "cardapio-produto"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "cardapio/editor",
+      "route": "/painel/cafe-e-flor/cardapio",
+      "viewport": "desktop",
+      "state": "editor de produto com complementos",
+      "file": "/training/screenshots/1.0.0/cardapio/editor.webp",
+      "ok": true,
+      "articles": [
+        "cardapio-produto",
+        "cardapio-produto"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "cardapio/pausado",
+      "route": "/painel/cafe-e-flor/cardapio",
+      "viewport": "desktop",
+      "state": "produto pausado",
+      "file": "/training/screenshots/1.0.0/cardapio/pausado.webp",
+      "ok": true,
+      "articles": [
+        "cardapio-produto"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "fidelidade/visao",
+      "route": "/painel/cafe-e-flor/fidelidade",
+      "viewport": "desktop",
+      "state": "regra, clientes e cupons",
+      "file": "/training/screenshots/1.0.0/fidelidade/visao.webp",
+      "ok": true,
+      "articles": [
+        "fidelidade-cupons",
+        "fidelidade-cupons"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "aparencia/editor",
+      "route": "/painel/cafe-e-flor/aparencia",
+      "viewport": "desktop",
+      "state": "editor de marca com prévia",
+      "file": "/training/screenshots/1.0.0/aparencia/editor.webp",
+      "ok": true,
+      "articles": [
+        "aparencia-marca",
+        "aparencia-marca"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "integracoes/whatsapp",
+      "route": "/painel/cafe-e-flor/integracoes",
+      "viewport": "desktop",
+      "state": "conexão do WhatsApp",
+      "file": "/training/screenshots/1.0.0/integracoes/whatsapp.webp",
+      "ok": true,
+      "articles": [
+        "integracoes-whatsapp",
+        "integracoes-whatsapp"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "integracoes/testador",
+      "route": "/painel/cafe-e-flor/integracoes",
+      "viewport": "desktop",
+      "state": "testador com lista de categorias",
+      "file": "/training/screenshots/1.0.0/integracoes/testador.webp",
+      "ok": true,
+      "articles": [
+        "integracoes-whatsapp"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "integracoes/pagamentos",
+      "route": "/painel/cafe-e-flor/integracoes",
+      "viewport": "desktop",
+      "state": "gateways e webhook",
+      "file": "/training/screenshots/1.0.0/integracoes/pagamentos.webp",
+      "ok": true,
+      "articles": [
+        "integracoes-whatsapp"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "super-admin/visao",
+      "route": "/super-admin",
+      "viewport": "desktop",
+      "state": "visão da plataforma",
+      "file": "/training/screenshots/1.0.0/super-admin/visao.webp",
+      "ok": true,
+      "articles": [
+        "super-admin-lojas"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "super-admin/onboarding",
+      "route": "/super-admin",
+      "viewport": "desktop",
+      "state": "onboarding de loja",
+      "file": "/training/screenshots/1.0.0/super-admin/onboarding.webp",
+      "ok": true,
+      "articles": [
+        "super-admin-lojas"
+      ],
+      "validation": "capturado"
+    },
+    {
+      "name": "entrar/login",
+      "route": "/entrar",
+      "viewport": "desktop",
+      "state": "tela de entrar",
+      "file": "/training/screenshots/1.0.0/entrar/login.webp",
+      "ok": true,
+      "articles": [
+        "entrar-conta"
+      ],
+      "validation": "capturado"
+    }
+  ]
+}

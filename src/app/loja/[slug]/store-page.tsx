@@ -9,6 +9,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMinute } from "@/lib/use-now";
 import { toast } from "sonner";
 import { InstallApp } from "@/components/loja/install-app";
+import { StoreHelp } from "@/components/training/store-help";
 import { ProductModal } from "@/components/loja/product-modal";
 import { Checkout } from "@/components/loja/checkout";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
@@ -127,7 +128,10 @@ export function StorePage({ slug }: { slug: string }) {
                 <h1 className={cn("text-3xl font-bold leading-tight text-ink sm:text-4xl", displayFont(tenant))}>{tenant.name}</h1>
                 <p className="mt-0.5 text-sm text-muted">{tenant.tagline}</p>
               </div>
-              <InstallApp tenant={tenant} />
+              <div className="flex items-center gap-2">
+                <StoreHelp slug={slug} />
+                <InstallApp tenant={tenant} />
+              </div>
             </div>
             <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink">
               <li className="flex items-center gap-1.5">
@@ -183,7 +187,7 @@ export function StorePage({ slug }: { slug: string }) {
           </div>
         )}
 
-        <nav aria-label="Como você quer pedir" className="mt-6">
+        <nav aria-label="Como você quer pedir" className="mt-6" data-tour="loja-modos">
           <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup">
             {modes.map((m) => (
               <button
@@ -210,7 +214,7 @@ export function StorePage({ slug }: { slug: string }) {
         </nav>
 
         <div className="sticky top-0 z-20 -mx-4 mt-4 bg-paper/95 px-4 pb-2 pt-3 backdrop-blur">
-          <label className="relative block">
+          <label className="relative block" data-tour="loja-busca">
             <span className="sr-only">Buscar no cardápio</span>
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
             <input
@@ -245,7 +249,7 @@ export function StorePage({ slug }: { slug: string }) {
         </div>
 
         {!query && mode !== "encomenda" && featured.length > 0 && (
-          <section className="mt-6" aria-labelledby="destaques">
+          <section className="mt-6" aria-labelledby="destaques" data-tour="loja-destaques">
             <h2 id="destaques" className={cn("text-2xl font-bold text-ink", displayFont(tenant))}>
               Destaques da casa
             </h2>

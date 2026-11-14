@@ -95,7 +95,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-tour="dash-kpis">
         <Kpi icon={TrendingUp} label="Faturamento hoje" value={money(data.revenue)} />
         <Kpi icon={Receipt} label="Pedidos hoje" value={String(data.count)} />
         <Kpi icon={ShoppingBag} label="Ticket médio hoje" value={money(data.ticket)} sub={`Semana: ${money(data.weekTicket)}`} />

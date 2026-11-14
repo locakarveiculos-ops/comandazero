@@ -42,12 +42,12 @@ export default function MesasPage() {
             {counts.livre} livres · {counts.ocupada} ocupadas · {counts.conta} pedindo conta
           </p>
         </div>
-        <Button variant="secondary" onClick={() => setQrOpen(true)}>
+        <Button variant="secondary" onClick={() => setQrOpen(true)} data-tour="mesas-qr">
           <QrCode className="size-4" aria-hidden /> QR Codes das mesas
         </Button>
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" data-tour="mesas-mapa">
         {tables.map((t) => {
           const s = STATE[t.state];
           const total = cartSubtotal(t.items);
@@ -197,7 +197,7 @@ function TableDrawer({ tenant, table, tables, onClose }: { tenant: Tenant; table
               {table.people > 1 && <p className="text-cz-muted">Por pessoa ({table.people}): {money(round2(total / table.people))}</p>}
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2" data-tour="mesa-transferir">
               <label className="grid flex-1 gap-1 text-sm font-semibold">
                 Transferir para
                 <Select value={transferTo} onChange={(e) => setTransferTo(e.target.value)}>

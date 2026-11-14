@@ -65,6 +65,7 @@ export function InstallApp({ tenant }: { tenant: Tenant }) {
       <button
         type="button"
         onClick={onClick}
+        data-tour="loja-instalar"
         className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-ink shadow-sm hover:opacity-90"
       >
         <Download className="size-4" aria-hidden />

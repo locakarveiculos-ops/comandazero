@@ -10,9 +10,9 @@ import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Button, Card, Field, Input, Select } from "@/components/ui";
 import { ROOT_DOMAIN } from "@/config/saas-brand";
 import { fileToDataUrl } from "@/lib/image";
-import { updateTenant } from "@/lib/repositories";
+import { updateTenant, useMenu } from "@/lib/repositories";
 import type { Tenant } from "@/lib/types";
-import { cn, contrastRatio, readableInk, slugify } from "@/lib/utils";
+import { cn, contrastRatio, money, readableInk, slugify } from "@/lib/utils";
 
 const PRESETS: { name: string; theme: Partial<Tenant["theme"]> }[] = [
   { name: "Café artesanal", theme: { paper: "#FAF6F0", surface: "#FFFFFF", ink: "#2C1A12", muted: "#6B5246", primary: "#2C1A12", secondary: "#5E7153", accent: "#C86D51", accentText: "#9C4A30", highlight: "#D49B4B", line: "#EADCCD", dark: false, fontDisplay: "serif" } },
@@ -31,6 +31,8 @@ export default function AparenciaPage() {
 function Editor({ tenant }: { tenant: Tenant }) {
   const [draft, setDraft] = useState<Tenant>(tenant);
   const t = draft.theme;
+  const { products } = useMenu(tenant.id);
+  const preview = [...products.filter((p) => p.featured && p.available), ...products.filter((p) => !p.featured && p.available)].slice(0, 3);
   const setTheme = (patch: Partial<Tenant["theme"]>) => setDraft((d) => ({ ...d, theme: { ...d.theme, ...patch } }));
   const contrast = contrastRatio(t.primary, t.primaryInk);
   const bodyContrast = contrastRatio(t.paper, t.ink);
@@ -187,16 +189,21 @@ function Editor({ tenant }: { tenant: Tenant }) {
                     </div>
                   </div>
                   <p className={cn("mt-4 text-base font-bold text-ink", displayFont(draft))}>Destaques da casa</p>
-                  {["Cappuccino Artesanal", "Croissant Artesanal", "Bolo da casa"].map((n, i) => (
-                    <div key={n} className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-surface p-2">
-                      <span className="size-12 shrink-0 rounded-lg" style={{ background: [t.accent, t.secondary, t.highlight][i] }} />
-                      <div>
-                        <p className="text-sm font-semibold text-ink">{n}</p>
-                        <p className="text-xs text-muted">R$ 15,90</p>
+                  {/* Prévia com os destaques reais do cardápio da loja (mesmos nomes, fotos e preços). */}
+                  {preview.map((p) => (
+                    <div key={p.id} className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-surface p-2">
+                      <img src={p.image} alt="" className="size-12 shrink-0 rounded-lg object-cover" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">{p.name}</p>
+                        <p className="text-xs tabular-nums text-muted">{p.priceLabel ?? money(p.price)}</p>
                       </div>
                     </div>
                   ))}
-                  <div className="mt-4 rounded-full bg-primary px-4 py-3 text-center text-sm font-bold text-primary-ink">Ver carrinho · R$ 31,80</div>
+                  {preview.length > 0 && (
+                    <div className="mt-4 rounded-full bg-primary px-4 py-3 text-center text-sm font-bold text-primary-ink">
+                      Ver carrinho · {money(preview.slice(0, 2).reduce((s, p) => s + p.price, 0))}
+                    </div>
+                  )}
                 </div>
               </TenantTheme>
             </div>

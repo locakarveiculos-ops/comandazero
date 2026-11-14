@@ -41,7 +41,7 @@ export default function PedidosPage() {
           <h1 className="cz-heading text-2xl font-bold">Pedidos</h1>
           <p className="text-sm text-cz-muted">Chegam em tempo real do cardápio, das mesas e do PDV. Deixe esta aba aberta.</p>
         </div>
-        <div className="flex gap-1 rounded-full bg-cz-surface p-1 ring-1 ring-cz-border" role="tablist">
+        <div className="flex gap-1 rounded-full bg-cz-surface p-1 ring-1 ring-cz-border" role="tablist" aria-label="Filtrar pedidos" data-tour="pedidos-filtros">
           {FILTERS.map((f) => (
             <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={cn("min-h-11 rounded-full px-4 text-sm font-semibold", filter === f.id ? "bg-brand text-brand-ink" : "text-cz-muted")}>
               {f.label}
@@ -90,7 +90,7 @@ export default function PedidosPage() {
               </ul>
               {o.scheduledFor && <p className="mt-2 text-sm font-semibold text-cz-info">Retirada: {fmtDateTime(o.scheduledFor)}</p>}
               {o.address && <p className="mt-2 text-sm text-cz-muted">📍 {o.address.street}, {o.address.number} · {o.address.district}</p>}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-cz-border pt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-cz-border pt-3" data-tour="pedido-acoes">
                 <p className="font-bold tabular-nums">{money(o.total)}</p>
                 <div className="flex flex-wrap gap-2">
                   {o.customer.phone && (

@@ -41,13 +41,13 @@ export default function IntegracoesPage() {
   const set = (fn: (s: IntegrationSettings) => IntegrationSettings) => updateIntegrations(tenant.id, fn);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 gap-5">
       <div>
         <h1 className="cz-heading text-2xl font-bold">Integrações</h1>
         <p className="text-sm text-cz-muted">WhatsApp com botões e listas, gateways de pagamento e e-mail transacional, com testador de payload ao vivo.</p>
       </div>
-      <Tabs.Root defaultValue="whatsapp" className="grid gap-5">
-        <Tabs.List className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Integrações">
+      <Tabs.Root defaultValue="whatsapp" className="grid min-w-0 gap-5">
+        <Tabs.List className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Integrações" data-tour="integ-abas">
           <Tabs.Trigger value="whatsapp" className={tabCls}>
             <MessageCircle className="size-4" aria-hidden /> WhatsApp
           </Tabs.Trigger>
@@ -153,12 +153,12 @@ function WhatsappTab({ settings, set }: TabProps) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="grid content-start gap-4">
+      <Card className="grid min-w-0 content-start gap-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-bold">Provedor</h2>
           <Switch checked={w.enabled} onCheckedChange={(v) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, enabled: v } }))} label="WhatsApp ativo" />
         </div>
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Provedor de WhatsApp">
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Provedor de WhatsApp">
           {(
             [
               ["whaileys", "Whaileys (botões e listas)", "Motor próprio · um número por loja"],
@@ -207,9 +207,9 @@ function WhatsappTab({ settings, set }: TabProps) {
         </p>
       </Card>
 
-      <Card className="grid content-start gap-4">
+      <Card className="grid min-w-0 content-start gap-4">
         <h2 className="font-bold">Testador de payload ao vivo</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Mensagem" id="pl-kind">
             <Select id="pl-kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
               <option value="order">Pedido recebido (botões)</option>
@@ -227,7 +227,7 @@ function WhatsappTab({ settings, set }: TabProps) {
         {isWhaileys && <ChatPreview card={payload as ReturnType<typeof numberedCard>["card"]} />}
         <div>
           <p className="mb-1 text-xs font-semibold text-cz-muted">{isWhaileys ? "POST /sessions/cpw-" + tenant.slug + "/send" : `${(payload as { method: string }).method} ${(payload as { path: string }).path}`}</p>
-          <pre className="max-h-72 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify(isWhaileys ? { to: toWhatsappNumber(to), ...payload } : (payload as { body: unknown }).body, null, 2)}</pre>
+          <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-72 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify(isWhaileys ? { to: toWhatsappNumber(to), ...payload } : (payload as { body: unknown }).body, null, 2)}</pre>
         </div>
         <Button variant="brand" onClick={send} loading={sending}>
           <Send className="size-4" aria-hidden /> {isWhaileys ? "Enviar de verdade pelo WhatsApp da loja" : "Enviar pela Evolution API"}
@@ -284,7 +284,7 @@ function PaymentsTab({ settings, set }: TabProps) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
-      <Card className="grid content-start gap-3">
+      <Card className="grid min-w-0 content-start gap-3">
         <h2 className="font-bold">Gateways da loja</h2>
         <ul className="grid gap-2">
           {ids.map((id) => {
@@ -325,7 +325,7 @@ function PaymentsTab({ settings, set }: TabProps) {
         </div>
       </Card>
 
-      <Card className="grid content-start gap-3">
+      <Card className="grid min-w-0 content-start gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-bold">{g.label}</h2>
           {g.docs && (
@@ -353,9 +353,9 @@ function PaymentsTab({ settings, set }: TabProps) {
         <p className="text-xs font-semibold text-cz-muted">
           1. Cobrança · {req.method} {req.url}
         </p>
-        <pre className="max-h-64 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ headers: req.headers, body: req.body }, null, 2)}</pre>
+        <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-64 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ headers: req.headers, body: req.body }, null, 2)}</pre>
         <p className="text-xs font-semibold text-cz-muted">2. Webhook de confirmação recebido em {input.webhookUrl}</p>
-        <pre className="max-h-48 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#9cc3f0]">{JSON.stringify(hook, null, 2)}</pre>
+        <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-48 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#9cc3f0]">{JSON.stringify(hook, null, 2)}</pre>
         <p className="rounded-xl bg-cz-success/10 p-3 text-sm text-cz-success">
           3. Normalizado: pedido <b>{parsed?.chargeId}</b> → <b>{parsed?.status === "paid" ? "PAGO" : parsed?.status}</b> · {money(amount)}
         </p>
@@ -399,7 +399,7 @@ function EmailTab({ settings, set }: TabProps) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
-      <Card className="grid content-start gap-3">
+      <Card className="grid min-w-0 content-start gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-bold">Resend</h2>
           <Switch checked={e.enabled} onCheckedChange={(v) => set((s) => ({ ...s, email: { ...s.email, enabled: v } }))} label="E-mail ativo" />
@@ -444,7 +444,7 @@ function EmailTab({ settings, set }: TabProps) {
           </Button>
         </div>
       </Card>
-      <Card className="grid content-start gap-3">
+      <Card className="grid min-w-0 content-start gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-bold">Prévia dos templates</h2>
           <Select aria-label="Template" value={tpl} onChange={(ev) => setTpl(ev.target.value as typeof tpl)} className="w-auto">
@@ -458,7 +458,7 @@ function EmailTab({ settings, set }: TabProps) {
           <b>Assunto:</b> {email.subject}
         </p>
         <iframe title="Prévia do e-mail" srcDoc={email.html} sandbox="" className="h-[520px] w-full rounded-xl border border-cz-border bg-cz-surface" />
-        <pre className="max-h-40 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ url: request.url, body: { ...request.body } }, null, 2)}</pre>
+        <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-40 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ url: request.url, body: { ...request.body } }, null, 2)}</pre>
       </Card>
     </div>
   );

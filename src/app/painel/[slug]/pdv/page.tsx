@@ -102,7 +102,7 @@ export default function PdvPage() {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_400px]">
-      <section className="grid min-w-0 content-start gap-3" aria-label="Produtos">
+      <section className="grid min-w-0 content-start gap-3" aria-label="Produtos" data-tour="pdv-produtos">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="mr-auto cz-heading text-2xl font-bold">PDV Balcão</h1>
           <p className="text-xs text-cz-muted">
@@ -119,10 +119,11 @@ export default function PdvPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onSearchEnter()}
             placeholder="Código ou nome (ex.: 101, cappuccino)"
+            data-tour="pdv-busca"
             className="min-h-14 w-full rounded-2xl border border-cz-border bg-cz-surface pl-12 pr-4 text-lg"
           />
         </label>
-        <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Categorias">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Categorias" data-tour="pdv-categorias">
           {[{ id: "all", name: "Todos" }, ...categories].map((c) => (
             <button key={c.id} role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id)} className={cn("min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold", cat === c.id ? "bg-brand text-brand-ink" : "bg-cz-surface ring-1 ring-cz-border")}>
               {c.name}
@@ -150,7 +151,7 @@ export default function PdvPage() {
         </ul>
       </section>
 
-      <aside className="sticky top-20 flex max-h-[calc(100vh-6rem)] flex-col rounded-3xl border border-cz-border bg-cz-surface" aria-label="Venda atual">
+      <aside className="sticky top-20 flex max-h-[calc(100vh-6rem)] flex-col rounded-3xl border border-cz-border bg-cz-surface" aria-label="Venda atual" data-tour="pdv-venda">
         <div className="flex items-center justify-between border-b border-cz-border p-4">
           <h2 className="font-bold">Venda atual</h2>
           {items.length > 0 && (
@@ -186,7 +187,7 @@ export default function PdvPage() {
             <span>Total</span>
             <span className="tabular-nums">{money(total)}</span>
           </p>
-          <Button variant="brand" size="lg" disabled={!items.length} onClick={() => setPayOpen(true)}>
+          <Button variant="brand" size="lg" disabled={!items.length} onClick={() => setPayOpen(true)} data-tour="pdv-finalizar">
             Finalizar (F4)
           </Button>
           {last && (
