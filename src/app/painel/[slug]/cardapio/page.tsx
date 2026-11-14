@@ -44,8 +44,10 @@ export default function CardapioPage() {
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="cz-heading text-2xl font-bold">Cardápio & estoque rápido</h1>
-          <p className="text-sm text-cz-muted">Pausar um item some do cardápio na hora, em todos os aparelhos. {paused > 0 && <b>{paused} pausado(s).</b>}</p>
+          <h1 className="cz-heading text-2xl font-bold">Cardápio</h1>
+          <p className="text-sm text-cz-muted">
+            {isRemote(tenant) ? "Pausar um item tira ele do cardápio na hora, em todos os aparelhos." : "Demonstração: pausar um item tira ele do cardápio neste navegador."} {paused > 0 && <b>{paused} pausado(s).</b>}
+          </p>
         </div>
         <Button variant="brand" onClick={() => setEditing(blank())} data-tour="cardapio-novo">
           <Plus className="size-4" aria-hidden /> Novo produto

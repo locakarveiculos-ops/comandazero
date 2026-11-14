@@ -416,7 +416,7 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
         onPaid={() => {
           if (pendingOrder) {
             markOrderPaid(pendingOrder.id);
-            toast.success("Pagamento confirmado! Seu pedido foi para a cozinha.");
+            toast.success("Pagamento confirmado! A loja já recebeu seu pedido.");
             finish(pendingOrder.id);
           }
           setCharge(null);

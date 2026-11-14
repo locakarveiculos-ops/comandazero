@@ -10,6 +10,7 @@ import { Card, Skeleton } from "@/components/ui";
 import { useStoreOrders } from "@/lib/repositories/engine";
 import type { Channel } from "@/lib/types";
 import { useMinute } from "@/lib/use-now";
+import { greeting } from "@/lib/utils";
 import { money, round2 } from "@/lib/utils";
 
 const CHANNEL: Record<Channel, { label: string; color: string }> = {
@@ -79,7 +80,7 @@ export default function Dashboard() {
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="cz-heading text-2xl font-bold">Bom dia, {tenant.name} ☕</h1>
+          <h1 className="cz-heading text-2xl font-bold">{now ? greeting(new Date(now)) : "Olá"}, {tenant.name}</h1>
           <p className="text-sm text-cz-muted">Resumo de hoje e dos últimos 7 dias.</p>
         </div>
         <div className="flex flex-wrap gap-2">

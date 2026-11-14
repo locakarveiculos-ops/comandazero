@@ -50,5 +50,8 @@ export const saasBrand = {
   },
 } as const;
 
-// Domínio raiz dos subdomínios das lojas. Sem domínio oficial definido: vem do ambiente.
-export const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "seudominio.com.br";
+/** Domínio oficial da plataforma (registrado). Subdomínios das lojas: <loja>.comandazero.com.br. */
+export const PLATFORM_DOMAIN = "comandazero.com.br";
+export const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || PLATFORM_DOMAIN;
+/** URL pública do app (links de e-mail, OAuth, canonical). */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://comandazero.vercel.app").replace(/\/+$/, "");

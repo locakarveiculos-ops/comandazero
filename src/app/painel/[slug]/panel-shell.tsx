@@ -44,7 +44,7 @@ const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolea
   { href: "/pdv", label: "PDV Balcão", icon: MonitorSmartphone, roles: ["owner", "manager", "cashier"] },
   { href: "/mesas", label: "Mesas", icon: UtensilsCrossed, roles: ["owner", "manager", "cashier", "waiter"] },
   { href: "/kds", label: "KDS Cozinha", icon: ChefHat, roles: ALL },
-  { href: "/cardapio", label: "Cardápio & estoque", icon: LayoutGrid, roles: ["owner", "manager"] },
+  { href: "/cardapio", label: "Cardápio", icon: LayoutGrid, roles: ["owner", "manager"] },
   { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart, roles: ["owner", "manager"] },
   { href: "/aparencia", label: "Marca do app", icon: Palette, roles: ["owner", "manager"] },
   { href: "/integracoes", label: "Integrações", icon: Plug, roles: ["owner", "manager"] },

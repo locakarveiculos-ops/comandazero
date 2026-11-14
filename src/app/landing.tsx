@@ -93,7 +93,6 @@ export function Landing() {
                 {[
                   ["/painel/cafe-e-flor", "Painel do lojista", LayoutDashboard],
                   ["/painel/cafe-e-flor/kds", "KDS cozinha", ChefHat],
-                  ["/super-admin", "Super Admin", ShieldCheck],
                 ].map(([href, label, Icon]) => {
                   const I = Icon as typeof ChefHat;
                   return (

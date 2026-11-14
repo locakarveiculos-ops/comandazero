@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Roteamento multi-tenant por subdomínio (Cloudflare + Vercel wildcard *.ROOT_DOMAIN):
- *   cafeeflor.seudominio.com.br/        -> /loja/cafeeflor
- *   cafeeflor.seudominio.com.br/pedido/x -> /loja/cafeeflor/pedido/x
+ *   cafeeflor.comandazero.com.br/        -> /loja/cafeeflor
+ *   cafeeflor.comandazero.com.br/pedido/x -> /loja/cafeeflor/pedido/x
  *   app.* / www.* / domínio raiz           -> rotas normais (landing, painel, super admin)
  * Localhost e *.vercel.app seguem pelo caminho /loja/[slug].
  * Domínios próprios do lojista (ex.: pedidos.cafeeflor.com.br) entram via mapa CUSTOM_DOMAINS="host=slug,host=slug".

@@ -176,7 +176,7 @@ function WhatsappTab({ settings, set }: TabProps) {
         ) : (
           <div className="grid gap-3">
             <Field label="URL do servidor Evolution" id="evo-url">
-              <Input id="evo-url" value={w.evolution.baseUrl} placeholder="https://evolution.seudominio.com.br" onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, baseUrl: e.target.value } } }))} />
+              <Input id="evo-url" value={w.evolution.baseUrl} placeholder="https://evolution.suaempresa.com.br" onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, baseUrl: e.target.value } } }))} />
             </Field>
             <Field label="Instância" id="evo-inst">
               <Input id="evo-inst" value={w.evolution.instance} placeholder={tenant.slug} onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, instance: e.target.value } } }))} />

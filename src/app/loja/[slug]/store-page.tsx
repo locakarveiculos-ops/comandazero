@@ -144,11 +144,14 @@ export function StorePage({ slug }: { slug: string }) {
               <li className="flex items-center gap-1.5">
                 <Clock className="size-4 text-muted" aria-hidden /> ~{tenant.prepMinutes} min de preparo
               </li>
-              <li className="flex items-center gap-1.5">
+              {/* Nota só na demonstração; loja real ainda não tem avaliações registradas. */}
+              {tenant.isDemo !== false && (
+                <li className="flex items-center gap-1.5">
                 <Star className="size-4 fill-highlight text-highlight" aria-hidden />
                 <b>{tenant.rating.toLocaleString("pt-BR")}</b>
                 <span className="text-muted">({tenant.ratingCount} avaliações)</span>
               </li>
+              )}
               <li className="flex items-center gap-1.5">
                 <MapPin className="size-4 text-muted" aria-hidden />
                 <span>{tenant.address.complement ?? `${tenant.address.street}, ${tenant.address.district}`}</span>

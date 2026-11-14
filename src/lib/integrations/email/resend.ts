@@ -4,7 +4,7 @@ export type EmailMessage = { from: string; to: string[]; subject: string; html: 
 
 export const RESEND_API = "https://api.resend.com";
 
-/** Remetente do domínio verificado da loja, ex.: "Café e Flor <pedidos@notificacoes.cafeeflor.seudominio.com.br>". */
+/** Remetente do domínio verificado da loja, ex.: "Café e Flor <pedidos@notificacoes.cafeeflor.comandazero.com.br>". */
 export const fromAddress = (name: string, subdomain: string, local = "pedidos") => `${name.replace(/[<>"]/g, "")} <${local}@${subdomain}>`;
 
 export const tenantEmailDomain = (tenantSubdomain: string, rootDomain: string) => `notificacoes.${tenantSubdomain}.${rootDomain}`;
