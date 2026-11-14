@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Check, LogOut } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/brand-switcher";
@@ -23,9 +23,9 @@ const TITLE: Record<Mode, string> = {
 /** Login, cadastro e recuperação de senha do SaaS (Supabase Auth). */
 export function AuthScreen() {
   const params = useSearchParams();
-  const router = useRouter();
   const dark = useSaasTheme() === "dark";
   const [mode, setMode] = useState<Mode>(() => (params.get("modo") as Mode) || "entrar");
+  const semLoja = params.get("erro") === "sem-loja";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -67,10 +67,13 @@ export function AuthScreen() {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Bem-vindo de volta!");
-        router.push(next);
+        // Navegação completa: o servidor lê o cookie de sessão novo e decide a loja e o papel.
+        window.location.assign(new URL(next, window.location.origin).href);
       } else if (mode === "cadastro") {
-        const { error } = await sb.auth.signUp({ email, password, options: { data: { name: name.trim() }, emailRedirectTo: `${window.location.origin}/painel` } });
+        const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name: name.trim() }, emailRedirectTo: `${window.location.origin}/painel/nova-loja` } });
         if (error) throw error;
+        // Sem confirmação de e-mail a sessão já vem pronta: segue para criar a loja.
+        if (data.session) return window.location.assign(new URL("/painel/nova-loja", window.location.origin).href);
         setSent(`Enviamos um link de confirmação para ${email}.`);
       } else if (mode === "recuperar") {
         const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
@@ -80,7 +83,7 @@ export function AuthScreen() {
         const { error } = await sb.auth.updateUser({ password });
         if (error) throw error;
         toast.success("Senha atualizada");
-        router.push(next);
+        window.location.assign(new URL(next, window.location.origin).href);
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -141,6 +144,11 @@ export function AuthScreen() {
             </div>
           )}
 
+          {semLoja && (
+            <p className="mt-6 rounded-[10px] bg-cz-info/10 p-3 text-sm">
+              Sua conta ainda não tem loja. <Link href="/painel/nova-loja" className="font-semibold underline">Criar minha loja</Link>
+            </p>
+          )}
           {!supabaseConfigured() && <p className="mt-6 rounded-[10px] bg-cz-warning/10 p-3 text-sm text-cz-warning">Supabase não configurado neste ambiente. A demonstração do painel continua aberta.</p>}
 
           {sent ? (
