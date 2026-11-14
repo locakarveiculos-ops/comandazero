@@ -48,7 +48,8 @@ export function TeamClient({ slug, members }: { slug: string; members: Member[] 
         <p className="text-sm text-cz-muted">Cada pessoa entra com o próprio e-mail e vê só o que o papel dela permite.</p>
       </div>
 
-      <Card data-tour="equipe-convite">
+      <div data-tour="equipe-convite">
+      <Card>
         <h2 className="font-bold">Adicionar pessoa</h2>
         <form onSubmit={invite} className="mt-4 grid gap-4 sm:grid-cols-[1fr_12rem_auto] sm:items-end" noValidate>
           <Field label="E-mail" id="eq-email">
@@ -71,6 +72,7 @@ export function TeamClient({ slug, members }: { slug: string; members: Member[] 
           {ROLES.find((r) => r.id === role)?.label}: {ROLES.find((r) => r.id === role)?.can}. Quem ainda não tem conta recebe um e-mail para criar a senha.
         </p>
       </Card>
+      </div>
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[560px] text-left text-sm">

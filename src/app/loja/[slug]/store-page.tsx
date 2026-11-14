@@ -126,11 +126,12 @@ export function StorePage({ slug }: { slug: string }) {
           <div className="relative rounded-3xl border border-line bg-surface p-5 shadow-xl shadow-black/10">
             <div className="flex flex-wrap items-start gap-4">
               <img src={tenant.logo} alt={`Logo ${tenant.name}`} className="-mt-12 size-24 shrink-0 rounded-full border-4 border-surface bg-surface object-cover shadow-lg" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[10rem] flex-1">
                 <h1 className={cn("text-3xl font-bold leading-tight text-ink sm:text-4xl", displayFont(tenant))}>{tenant.name}</h1>
                 <p className="mt-0.5 text-sm text-muted">{tenant.tagline}</p>
               </div>
-              <div className="flex items-center gap-2">
+              {/* Celular: ajuda e instalar ficam numa linha própria para não espremer o nome da loja. */}
+              <div className="flex basis-full items-center gap-2 sm:basis-auto">
                 <StoreHelp slug={slug} />
                 <InstallApp tenant={tenant} />
               </div>
@@ -144,8 +145,8 @@ export function StorePage({ slug }: { slug: string }) {
               <li className="flex items-center gap-1.5">
                 <Clock className="size-4 text-muted" aria-hidden /> ~{tenant.prepMinutes} min de preparo
               </li>
-              {/* Nota só na demonstração; loja real ainda não tem avaliações registradas. */}
-              {tenant.isDemo !== false && (
+              {/* Nota real só com 10+ avaliações de pedidos entregues (o banco devolve 0 abaixo disso). */}
+              {tenant.ratingCount >= 10 && tenant.rating > 0 && (
                 <li className="flex items-center gap-1.5">
                 <Star className="size-4 fill-highlight text-highlight" aria-hidden />
                 <b>{tenant.rating.toLocaleString("pt-BR")}</b>

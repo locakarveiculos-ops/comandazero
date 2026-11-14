@@ -61,14 +61,16 @@ export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null
 
 const COLLAPSE_KEY = "cz-sidebar-collapsed";
 
-export function PanelShell({ slug, children, access, banner }: { slug: string; children: ReactNode; access: PanelAccess; banner?: ReactNode }) {
+export function PanelShell({ slug, children, access, banner, stores }: { slug: string; children: ReactNode; access: PanelAccess; banner?: ReactNode; stores?: { slug: string; name: string }[] | null }) {
   const path = usePathname();
   const { tenant, notFound } = useStoreTenant(slug);
   // Loja real: pedido novo chega pelo Realtime (outro aparelho). Demo: pelo aviso entre abas (useOrderAlerts).
   const onRemoteNew = useRemoteOrderAlert(tenant);
   const { orders, live } = useStoreOrders(tenant, onRemoteNew);
   const soundOn = useDb((s) => s.soundOn);
-  const tenants = useDb((s) => s.tenants);
+  const localTenants = useDb((s) => s.tenants);
+  // Demonstração: lojas do navegador. Loja real: lojas da conta vindas do servidor (a atual sempre aparece).
+  const tenants = stores ? (stores.some((t) => t.slug === slug) ? stores : [{ slug, name: slug }, ...stores]) : localTenants;
   const theme = useSaasTheme();
   const [open, setOpen] = useState(false);
   const stored = useClientValue(() => localStorage.getItem(COLLAPSE_KEY) === "1", false);
