@@ -10,14 +10,14 @@ import { Badge, Button, Card, Field, Input, Modal, Select, Switch, Textarea } fr
 import { fileToDataUrl } from "@/lib/image";
 import { addCategory, deleteProduct, saveProduct } from "@/lib/repositories";
 import { isRemote, setProductAvailable, useStoreMenu } from "@/lib/repositories/engine";
-import { remoteSaveProduct, remoteUploadImage } from "@/lib/repositories/remote";
+import { remoteDeleteProduct, remoteSaveCategory, remoteSaveProduct, remoteUploadImage } from "@/lib/repositories/remote";
 import type { OptionGroup, Product, Tenant } from "@/lib/types";
 import { cn, money, uid } from "@/lib/utils";
 
 export default function CardapioPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const { categories, products } = useStoreMenu(tenant);
+  const { categories, products, loading } = useStoreMenu(tenant);
   const [editing, setEditing] = useState<Product | null>(null);
   const [newCat, setNewCat] = useState("");
   const [filter, setFilter] = useState("all");
@@ -30,7 +30,8 @@ export default function CardapioPage() {
     id: uid("p_"),
     tenantId: tenant.id,
     categoryId: categories[0]?.id ?? "",
-    code: String(100 + products.length + 1),
+    // Próximo código livre: maior código numérico + 1 (contar produtos colidia com códigos fora de sequência).
+    code: String(Math.max(100, ...products.map((x) => Number(x.code)).filter((n) => Number.isFinite(n))) + 1),
     name: "",
     description: "",
     price: 0,
@@ -49,7 +50,7 @@ export default function CardapioPage() {
             {isRemote(tenant) ? "Pausar um item tira ele do cardápio na hora, em todos os aparelhos." : "Demonstração: pausar um item tira ele do cardápio neste navegador."} {paused > 0 && <b>{paused} pausado(s).</b>}
           </p>
         </div>
-        <Button variant="brand" onClick={() => setEditing(blank())} data-tour="cardapio-novo">
+        <Button variant="brand" onClick={() => setEditing(blank())} disabled={loading} data-tour="cardapio-novo">
           <Plus className="size-4" aria-hidden /> Novo produto
         </Button>
       </div>
@@ -66,10 +67,15 @@ export default function CardapioPage() {
           className="flex w-full gap-2 sm:ml-auto sm:w-auto"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!newCat.trim()) return;
-            addCategory(tenant.id, newCat.trim());
-            toast.success(`Categoria ${newCat} criada`);
-            setNewCat("");
+            const name = newCat.trim();
+            if (!name) return;
+            const ok = () => {
+              toast.success(`Categoria ${name} criada`);
+              setNewCat("");
+            };
+            if (isRemote(tenant)) return void remoteSaveCategory(tenant.id, name).then(ok, (err: Error) => toast.error(err.message));
+            addCategory(tenant.id, name);
+            ok();
           }}
         >
           <Input aria-label="Nova categoria" value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Nova categoria" className="min-w-0 flex-1 sm:w-44 sm:flex-none" />
@@ -270,6 +276,7 @@ function EditorForm({ initial, categories, tenant, onClose }: { initial: Product
             className="text-cz-error"
             onClick={() => {
               if (!confirm(`Excluir “${p.name}”? Esta ação não pode ser desfeita.`)) return;
+              if (remote) return void remoteDeleteProduct(p.id).then(onClose, (err: Error) => toast.error(err.message));
               deleteProduct(p.id);
               onClose();
             }}

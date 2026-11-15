@@ -4,7 +4,7 @@ import { can, getTenantAccess, getUser } from "@/lib/server/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 
 /**
- * POST /api/produtos/foto (multipart: slug, file) — foto de produto no Supabase Storage.
+ * POST /api/produtos/foto (multipart: slug, file, kind?) — foto de produto (ou logo/capa com kind=brand) no Supabase Storage.
  * Valida papel (dono/gerente), tipo pelo conteúdo (não só pela extensão) e tamanho; grava em <tenant_id>/<uuid>.<ext>.
  * O bucket também restringe tipo (webp/jpeg/png) e 2 MB, e a policy só aceita membros owner/manager da loja.
  */
@@ -27,15 +27,18 @@ export async function POST(req: Request) {
     if (file.size > MAX) throw new HttpError(413, "Imagem acima de 2 MB.");
     const access = await getTenantAccess(slug.data);
     if (!access || access.isDemo) throw new HttpError(400, "Loja de demonstração guarda a foto no navegador.");
-    if (!can(access.role, "menu.edit")) throw new HttpError(403, "Sua função não permite alterar o cardápio.");
+    // kind=brand: logo e capa da loja (bucket próprio, permissão de marca).
+    const brand = form.get("kind") === "brand";
+    if (!can(access.role, brand ? "brand.edit" : "menu.edit")) throw new HttpError(403, brand ? "Sua função não permite alterar a marca." : "Sua função não permite alterar o cardápio.");
     const bytes = new Uint8Array(await file.arrayBuffer());
     const sig = SIGNATURES.find((s) => s.test(bytes));
     if (!sig) throw new HttpError(415, "Formato não aceito. Use JPG, PNG ou WebP.");
     const path = `${access.id}/${crypto.randomUUID()}.${sig.ext}`;
     const sb = await supabaseServer();
-    const { error } = await sb.storage.from("product-images").upload(path, bytes, { contentType: sig.mime, upsert: false, cacheControl: "31536000" });
+    const bucket = brand ? "brand-images" : "product-images";
+    const { error } = await sb.storage.from(bucket).upload(path, bytes, { contentType: sig.mime, upsert: false, cacheControl: "31536000" });
     if (error) throw new HttpError(400, `Falha no upload: ${error.message}`);
-    const { data } = sb.storage.from("product-images").getPublicUrl(path);
+    const { data } = sb.storage.from(bucket).getPublicUrl(path);
     return json({ url: data.publicUrl, path }, 201);
   } catch (e) {
     return errorResponse(e);

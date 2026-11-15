@@ -2,15 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element -- logo e capa podem vir de upload */
 import { Check, ImagePlus, TriangleAlert } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Button, Card, Field, Input, Select } from "@/components/ui";
 import { ROOT_DOMAIN } from "@/config/saas-brand";
-import { fileToDataUrl } from "@/lib/image";
-import { updateTenant, useMenu } from "@/lib/repositories";
+import { dataUrlToFile, fileToDataUrl } from "@/lib/image";
+import { updateTenant } from "@/lib/repositories";
+import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
+import { remoteUpdateBrand, remoteUploadImage } from "@/lib/repositories/remote";
 import type { Tenant } from "@/lib/types";
 import { cn, contrastRatio, money, readableInk, slugify } from "@/lib/utils";
 
@@ -31,7 +33,10 @@ export default function AparenciaPage() {
 function Editor({ tenant }: { tenant: Tenant }) {
   const [draft, setDraft] = useState<Tenant>(tenant);
   const t = draft.theme;
-  const { products } = useMenu(tenant.id);
+  const { products } = useStoreMenu(tenant);
+  const router = useRouter();
+  const remote = isRemote(tenant);
+  const [saving, setSaving] = useState(false);
   const preview = [...products.filter((p) => p.featured && p.available), ...products.filter((p) => !p.featured && p.available)].slice(0, 3);
   const setTheme = (patch: Partial<Tenant["theme"]>) => setDraft((d) => ({ ...d, theme: { ...d.theme, ...patch } }));
   const contrast = contrastRatio(t.primary, t.primaryInk);
@@ -41,7 +46,9 @@ function Editor({ tenant }: { tenant: Tenant }) {
     if (!f) return;
     try {
       setDraft((d) => ({ ...d, [field]: "" }));
-      const url = await fileToDataUrl(f, field === "logo" ? 400 : 1400);
+      const small = await fileToDataUrl(f, field === "logo" ? 400 : 1400);
+      // Loja real: arquivo vai para o Storage (URL pública); demonstração: fica no navegador.
+      const url = remote ? await remoteUploadImage(tenant.slug, dataUrlToFile(small, field), "brand") : small;
       setDraft((d) => ({ ...d, [field]: url }));
     } catch (e) {
       toast.error((e as Error).message);
@@ -49,11 +56,25 @@ function Editor({ tenant }: { tenant: Tenant }) {
     }
   };
 
-  const save = () => {
+  const save = async () => {
     if (!/^[a-z0-9-]{3,30}$/.test(draft.subdomain)) return toast.error("Subdomínio: 3 a 30 letras minúsculas, números ou hífen");
     if (contrast < 4.5 || bodyContrast < 4.5) return toast.error("Ajuste as cores: o contraste mínimo é 4,5:1 para leitura (WCAG AA).");
-    updateTenant(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
-    toast.success("Marca do app atualizada no cardápio e no PWA");
+    if (!remote) {
+      updateTenant(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
+      return void toast.success("Marca do app atualizada no cardápio e no PWA");
+    }
+    if (draft.logo.startsWith("data:") || draft.cover.startsWith("data:")) return toast.error("Aguarde o envio da imagem terminar.");
+    setSaving(true);
+    try {
+      await remoteUpdateBrand(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
+      toast.success("Marca publicada no cardápio e no app");
+      // Painel e vitrine leem a loja no servidor: recarrega os dados da página.
+      router.refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -63,7 +84,7 @@ function Editor({ tenant }: { tenant: Tenant }) {
           <h1 className="cz-heading text-2xl font-bold">Marca do seu app</h1>
           <p className="text-sm text-cz-muted">Logo, cores e endereço do cardápio instalável. A prévia ao lado é exatamente o que o cliente vê.</p>
         </div>
-        <Button variant="brand" onClick={save}>
+        <Button variant="brand" onClick={save} loading={saving}>
           <Check className="size-4" aria-hidden /> Salvar e publicar
         </Button>
       </div>
