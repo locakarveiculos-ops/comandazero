@@ -14,26 +14,24 @@ Cada item diz **onde**, **o quê** e **como conferir**. Nenhum segredo vai para 
 
 ## 2. E-mails de autenticação (Supabase + Resend)
 
-Hoje o Supabase manda os e-mails com o servidor padrão: **máximo 2 por hora** e **sem modelo em português**
-(o plano gratuito recusa modelo próprio sem SMTP; erro `entitlement_required` ao aplicar).
+Situação em 15/11/2026: a chave do Resend recebida é **só de envio** (`restricted_api_key`): não cadastra domínio.
+Enquanto o domínio não estiver verificado no Resend, o Supabase continua no servidor padrão (2 e-mails/hora, textos em inglês).
 
-1. Criar conta no [Resend](https://resend.com), adicionar o domínio `comandazero.com.br` e publicar no DNS os registros SPF, DKIM e DMARC que ele mostrar. Conferir: domínio "Verified".
-2. Gerar uma API key do Resend.
-3. Supabase › Authentication › Emails › SMTP Settings:
-   - Host `smtp.resend.com`, porta `465`, usuário `resend`, senha = API key.
-   - Remetente `nao-responda@comandazero.com.br`, nome `ComandaZero`.
-4. Supabase › Authentication › Email Templates: colar o HTML de cada arquivo de `supabase/templates/`
-   (`confirmacao.html`, `recuperacao.html`, `convite.html`, `link_magico.html`, `troca_email.html`) com os assuntos de `supabase/config.toml`.
-5. Supabase › Authentication › Rate Limits: subir "emails sent" para pelo menos 30/hora.
-6. **Religar a confirmação de e-mail** (foi desligada a pedido): Authentication › Providers › Email › "Confirm email" ligado.
-7. Conferir: criar conta nova em `/entrar?modo=cadastro`, receber "Confirme sua conta na ComandaZero", clicar e cair em `/auth/confirmado`.
+**O DNS de `comandazero.com.br` hoje bloqueia e-mail** (padrão de domínio novo na Cloudflare):
+`MX .` (MX nulo), `TXT v=spf1 -all` e `_dmarc v=DMARC1; p=reject;`. Esses três precisam ser trocados pelos do Resend.
 
-## 3. URL do site
+1. Resend › Domains › Add: `comandazero.com.br`, região São Paulo (ou mandar uma chave "Full access" para eu fazer).
+2. Copiar os registros que o Resend mostrar (MX e TXT em `send.comandazero.com.br`, TXT DKIM em `resend._domainkey`).
+   Eu crio na Cloudflare (DNS only), troco o SPF do raiz e o DMARC para `p=none` durante a validação.
+3. Resend › Verify. Conferir "Verified".
+4. Depois disso eu configuro o SMTP no Supabase (host `smtp.resend.com`, porta 465, usuário `resend`, remetente
+   `nao-responda@comandazero.com.br`), aplico os modelos em português de `supabase/templates/` e subo o limite para 30 e-mails/hora.
+5. **Confirmação de e-mail no cadastro**: segue desligada a pedido do dono. Religar só com autorização.
 
-1. Quando o domínio estiver na Vercel: Supabase › Authentication › URL Configuration
-   - Site URL: `https://comandazero.com.br`
-   - Redirect URLs: `https://comandazero.com.br/**`, `https://comandazero.vercel.app/**`
-2. Vercel › Settings › Environment Variables: `NEXT_PUBLIC_SITE_URL=https://comandazero.com.br` (Production) e redeploy.
+## 3. URL do site (feito em 15/11/2026)
+
+- Supabase: Site URL `https://comandazero.com.br`; Redirect URLs com `comandazero.com.br/**`, `www.`, `*.comandazero.com.br/**`, `comandazero.vercel.app/**` e localhost.
+- Vercel (Production e Preview): `NEXT_PUBLIC_SITE_URL=https://comandazero.com.br`, `NEXT_PUBLIC_ROOT_DOMAIN=comandazero.com.br`, `APP_URL=https://comandazero.com.br`, `INFINITEPAY_HANDLE=marco-boggian`.
 
 ## 4. Variáveis na Vercel (Production)
 
@@ -54,10 +52,11 @@ Conta configurada: InfiniteTag `$marco-boggian`. CNPJ informado pelo proprietár
 
 1. **Ligar o Checkout Integrado** (obrigatório): App InfinitePay ou [Conta Web](https://app.infinitepay.io/external-checkout#configuracoes) › Configurações do Checkout › **Habilitar checkout integrado**. Hoje a API responde `external_checkout_not_enabled` para esta conta.
 2. (Opcional) Na mesma tela, criar uma API Key (`inchk_…`) e cadastrar `INFINITEPAY_API_KEY` na Vercel. Com ela, cada link de pagamento vale 7 dias e aceita um único pagamento.
-3. Não precisa cadastrar webhook: cada link já leva `https://<domínio>/api/webhooks/assinatura`. O aviso não é assinado, por isso o sistema confirma todo pagamento no `/payment_check` antes de ativar o plano.
-4. Não existe sandbox: para testar, assine o plano numa loja de teste e pague R$ 1,00 ajustando o preço temporariamente, ou pague um plano real e estorne pelo app.
-5. Conferir: depois do pagamento, a tela de Assinatura mostra **Ativa** e o comprovante; o Super Admin mostra "Pagamento recebido" no histórico e o MRR sobe.
-6. **Recorrência**: a API da InfinitePay não cobra sozinha. O plano anual vale 12 meses; no mensal, o dono renova pela tela de Assinatura (aviso 10 dias antes; só leitura 7 dias após vencer).
+3. Mesmo contrato do Portaria Prime (homologado lá em 21/10/2026 com esta mesma conta). Em 15/11/2026 a mesma chamada responde `external_checkout_not_enabled`: a opção foi desligada na conta depois disso. Ao religar, Portaria Prime e ComandaZero voltam a funcionar juntos.
+4. Não precisa cadastrar webhook: cada link já leva `https://<domínio>/api/webhooks/assinatura`. O aviso não é assinado, por isso o sistema confirma todo pagamento no `/payment_check` antes de ativar o plano.
+5. Não existe sandbox: para testar, assine o plano numa loja de teste e pague R$ 1,00 ajustando o preço temporariamente, ou pague um plano real e estorne pelo app.
+6. Conferir: depois do pagamento, a tela de Assinatura mostra **Ativa** e o comprovante; o Super Admin mostra "Pagamento recebido" no histórico e o MRR sobe.
+7. **Recorrência**: a API da InfinitePay não cobra sozinha. O plano anual vale 12 meses; no mensal, o dono renova pela tela de Assinatura (aviso 10 dias antes; só leitura 7 dias após vencer).
 
 ## 6. Login com Google (opcional)
 
@@ -65,11 +64,13 @@ Conta configurada: InfiniteTag `$marco-boggian`. CNPJ informado pelo proprietár
 2. Supabase › Authentication › Providers › Google: colar client id e secret.
 3. Vercel: `NEXT_PUBLIC_AUTH_GOOGLE=1` e redeploy.
 
-## 7. Domínio e subdomínios das lojas
+## 7. Domínio e subdomínios das lojas (feito em 15/11/2026)
 
-1. Vercel › Domains: adicionar `comandazero.com.br` e `*.comandazero.com.br`.
-2. No DNS (Cloudflare ou registro.br): apontar conforme a Vercel indicar (wildcard exige nameservers da Vercel ou CNAME por loja).
-3. `NEXT_PUBLIC_ROOT_DOMAIN=comandazero.com.br` na Vercel.
+- Cloudflare (zona ativa, nameservers `jeff`/`jo.ns.cloudflare.com`), todos **DNS only**:
+  `A comandazero.com.br → 216.198.79.1` e `64.29.17.1`; `CNAME www` e `CNAME *` → `070244b9354b2391.vercel-dns-017.com`.
+- Vercel: `comandazero.com.br`, `www.comandazero.com.br` (redireciona 308 para o raiz) e `*.comandazero.com.br` (subdomínio por loja).
+- O token da Cloudflare tem restrição de IP: só funciona saindo por IPv4 (`curl -4`). Pelo IPv6 a API responde 9109.
+- Certificado do wildcard é emitido pela Vercel; até sair, `<loja>.comandazero.com.br` pode falhar no HTTPS. O caminho `/loja/<slug>` funciona sempre.
 
 ## 8. Antes da primeira loja pagante
 
