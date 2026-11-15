@@ -29,5 +29,6 @@ export async function settleInvoice(p: { invoiceId: string; transactionNsu: stri
     p_receipt: null,
   });
   if (error) throw error;
+  if (done && check.installments) await sb.rpc("set_invoice_installments", { p_invoice: inv.id, p_installments: check.installments });
   return { ok: true as const, already: !done };
 }
