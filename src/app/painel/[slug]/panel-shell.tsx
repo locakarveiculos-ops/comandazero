@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useState, type ReactNode } from "react";
 import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/brand-switcher";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useOrderAlerts, useRemoteOrderAlert } from "@/components/painel/use-panel";
@@ -36,6 +36,7 @@ import { useDb } from "@/lib/repositories";
 import { useStoreOrders } from "@/lib/repositories/engine";
 import { mutate } from "@/lib/repositories/store";
 import { useClientValue } from "@/lib/use-client";
+import type { Plan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // Papéis que veem cada item (espelha PAGE_PERMISSION do servidor; o servidor é quem bloqueia de fato).
@@ -57,7 +58,11 @@ const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolea
 ];
 
 type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen";
-export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null; platformAdmin: boolean; readOnly?: boolean };
+export type PanelAccess = { tenantId: string; isDemo: boolean; role: Role | null; platformAdmin: boolean; readOnly?: boolean; plan?: Plan; trial?: boolean };
+
+// Contexto para as telas do painel lerem plano e permissão sem nova consulta.
+const PanelAccessContext = createContext<PanelAccess>({ tenantId: "", isDemo: true, role: null, platformAdmin: false, plan: "enterprise", trial: true });
+export const usePanelAccess = () => useContext(PanelAccessContext);
 
 const COLLAPSE_KEY = "cz-sidebar-collapsed";
 
@@ -100,7 +105,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
         <Suspense>
           <TourFromQuery slug={slug} />
         </Suspense>
-        {children}
+        <PanelAccessContext.Provider value={access}>{children}</PanelAccessContext.Provider>
       </SaasSurface>
     );
 
@@ -217,7 +222,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
           <Suspense>
             <TourFromQuery slug={slug} />
           </Suspense>
-          {children}
+          <PanelAccessContext.Provider value={access}>{children}</PanelAccessContext.Provider>
         </main>
       </div>
 

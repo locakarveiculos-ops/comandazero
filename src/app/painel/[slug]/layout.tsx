@@ -24,7 +24,7 @@ export default async function Layout({ children, params }: LayoutProps<"/painel/
       <PanelShell
         slug={slug}
         stores={myStores}
-        access={{ tenantId: access.id, isDemo: access.isDemo, role: access.role, platformAdmin: access.platformAdmin, readOnly: !!sub?.readOnly }}
+        access={{ tenantId: access.id, isDemo: access.isDemo, role: access.role, platformAdmin: access.platformAdmin, readOnly: !!sub?.readOnly, plan: sub?.effectivePlan ?? "enterprise", trial: !sub || sub.status === "trial" }}
         banner={page === "assinatura" ? null : <BillingBanner slug={slug} sub={sub} canPay={can(access.role, "billing.manage")} />}
       >
         {children}

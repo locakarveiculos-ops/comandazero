@@ -61,3 +61,29 @@ export type Cycle = "monthly" | "yearly";
 export const cyclePrice = (p: PlanInfo, cycle: Cycle) => (cycle === "yearly" ? Math.round(p.yearlyMonthly * 12 * 100) / 100 : p.monthly);
 /** Contribuição mensal para o MRR. */
 export const monthlyValue = (p: PlanInfo, cycle: Cycle) => (cycle === "yearly" ? p.yearlyMonthly : p.monthly);
+
+/**
+ * Recursos liberados por plano. O servidor e o banco consultam este mapa (o menu escondido não é proteção).
+ * Teste grátis = acesso completo (mesmos recursos do plano mais alto) até o primeiro pagamento.
+ */
+export type Feature = "whatsapp" | "pdv" | "loyalty" | "team" | "reports_export" | "multi_store" | "custom_domain";
+export const PLAN_FEATURES: Record<Plan, Feature[]> = {
+  starter: [],
+  pro: ["whatsapp", "pdv", "loyalty", "team", "reports_export"],
+  enterprise: ["whatsapp", "pdv", "loyalty", "team", "reports_export", "multi_store", "custom_domain"],
+};
+/** Plano usado nas regras: em teste (ou loja de demonstração) vale o completo; depois, o plano pago. */
+export const effectivePlan = (s: { status: "trial" | "active" | "overdue" | "canceled" | null | undefined; plan: Plan }): Plan =>
+  !s.status || s.status === "trial" ? "enterprise" : s.plan;
+export const hasFeature = (plan: Plan, f: Feature) => PLAN_FEATURES[plan].includes(f);
+export const FEATURE_LABEL: Record<Feature, string> = {
+  whatsapp: "WhatsApp da loja",
+  pdv: "PDV de balcão",
+  loyalty: "Fidelidade e cupons",
+  team: "Equipe com papéis",
+  reports_export: "Exportação de relatórios",
+  multi_store: "Mais de uma loja",
+  custom_domain: "Domínio próprio",
+};
+/** Plano mais barato que libera o recurso (para o aviso "disponível no plano X"). */
+export const planFor = (f: Feature) => PLANS.find((p) => hasFeature(p.id, f)) ?? PLANS[PLANS.length - 1];

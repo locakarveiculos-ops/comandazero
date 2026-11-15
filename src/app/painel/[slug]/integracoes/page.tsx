@@ -18,6 +18,10 @@ import { numberedCard } from "@/lib/integrations/whatsapp/card";
 import { welcome } from "@/lib/integrations/whatsapp/bot";
 import { buildOrderCard, readChannelBlob } from "@/lib/integrations/whatsapp/notify";
 import { updateIntegrations, useIntegrations, useMenu, useOrders } from "@/lib/repositories";
+import { isRemote } from "@/lib/repositories/engine";
+import { useRemoteIntegrations } from "@/lib/repositories/remote";
+import { usePanelAccess } from "../panel-shell";
+import { hasFeature } from "@/lib/plans";
 import type { GatewayId, IntegrationSettings, Order, WhatsappTrigger } from "@/lib/types";
 import { cn, formatPhone, isValidBrPhone, money, round2, toWhatsappNumber } from "@/lib/utils";
 
@@ -36,9 +40,14 @@ const tabCls = "min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold data-[
 export default function IntegracoesPage() {
   const { slug } = useParams<{ slug: string }>();
   const { tenant } = useStoreTenant(slug);
-  const settings = useIntegrations(tenant?.id);
-  if (!tenant || !settings) return null;
-  const set = (fn: (s: IntegrationSettings) => IntegrationSettings) => updateIntegrations(tenant.id, fn);
+  const remote = isRemote(tenant);
+  const local = useIntegrations(remote ? undefined : tenant?.id);
+  const r = useRemoteIntegrations(tenant?.id, remote);
+  // Loja real: configurações no banco. Demonstração: no navegador.
+  const settings = remote ? r.settings : local;
+  if (!tenant) return null;
+  if (!settings) return <p className="text-sm text-cz-muted">Carregando integrações…</p>;
+  const set = remote ? r.update : (fn: (s: IntegrationSettings) => IntegrationSettings) => updateIntegrations(tenant.id, fn);
 
   return (
     <div className="grid min-w-0 gap-5">
@@ -82,6 +91,9 @@ function useTenantCtx() {
 }
 
 function WhatsappTab({ settings, set }: TabProps) {
+  // Teste grátis = plano completo; depois, WhatsApp a partir do Profissional.
+  const { plan = "enterprise" } = usePanelAccess();
+  const wa = hasFeature(plan, "whatsapp");
   const { tenant, sample } = useTenantCtx();
   const { categories, products } = useMenu(tenant.id);
   const w = settings.whatsapp;
@@ -172,7 +184,7 @@ function WhatsappTab({ settings, set }: TabProps) {
           ))}
         </div>
         {w.provider === "whaileys" ? (
-          <WhatsappConnect tenant={tenant} />
+          <WhatsappConnect tenant={tenant} included={wa} />
         ) : (
           <div className="grid gap-3">
             <Field label="URL do servidor Evolution" id="evo-url">
