@@ -283,7 +283,7 @@ export const ARTICLES: Article[] = [
     roles: ["proprietario"],
     level: "basico",
     title: "Criar a sua loja em 5 passos",
-    summary: "Nome, formas de venda, horário, cores e cardápio. A loja vai ao ar com 14 dias grátis.",
+    summary: "Nome, formas de venda, horário, cores e cardápio. A loja vai ao ar com 30 dias grátis.",
     prerequisites: ["entrar-conta"],
     estimatedMinutes: 3,
     steps: [
@@ -292,7 +292,7 @@ export const ARTICLES: Article[] = [
       { text: "Passo 4: escolha as cores. A prévia mostra o topo do cardápio do jeito que o cliente vai ver.", screenshot: shot("onboarding/aparencia"), alt: "Passo 4 com paletas de cores e prévia do cardápio" },
       { text: "Passo 5: comece com o cardápio modelo (e troque preços e fotos) ou do zero. Ao concluir, a loja já está no ar." },
     ],
-    expectedResult: "Loja publicada, painel aberto e teste grátis de 14 dias iniciado.",
+    expectedResult: "Loja publicada, painel aberto e teste grátis de 30 dias iniciado.",
     commonErrors: [
       { problem: "Esse endereço já está em uso.", solution: "Troque o endereço do cardápio no passo 1 (por exemplo, acrescente a cidade)." },
       { problem: "O botão Continuar não avança.", solution: "Leia o aviso em vermelho: falta WhatsApp com DDD, cidade ou horário de fechar depois do de abrir." },
@@ -335,11 +335,11 @@ export const ARTICLES: Article[] = [
     estimatedMinutes: 2,
     steps: [
       { text: "Em Assinatura você vê a situação (teste grátis, ativa, pagamento pendente), escolhe mensal ou anual e o plano. Sem comissão por pedido.", screenshot: shot("assinatura/planos"), alt: "Tela de assinatura com teste grátis e os três planos" },
-      { text: "Informe CPF ou CNPJ para a nota e toque em Assinar. A fatura abre na página do Asaas, onde você paga por Pix, boleto ou cartão." },
-      { text: "Com o pagamento confirmado, a assinatura fica Ativa sozinha. Com atraso de mais de 7 dias, o painel fica só leitura: os pedidos continuam chegando, mas cardápio e configurações travam até regularizar." },
+      { text: "Toque em Pagar. O pagamento abre na página segura da InfinitePay, por Pix ou cartão em até 12x. Ao concluir, toque em Continuar para voltar ao painel." },
+      { text: "Com o pagamento confirmado, a assinatura fica Ativa e o comprovante aparece em Pagamentos. No plano mensal, renove pela mesma tela a cada mês (o aviso aparece 10 dias antes). Com atraso de mais de 7 dias, o painel fica só leitura: os pedidos continuam chegando, mas cardápio e configurações travam até regularizar." },
     ],
     expectedResult: "Assinatura ativa e o aviso de teste grátis some do topo do painel.",
-    commonErrors: [{ problem: "Aparece que o pagamento online está sendo ativado.", solution: "A cobrança ainda não foi configurada pela plataforma. Fale com o suporte pelo WhatsApp." }],
+    commonErrors: [{ problem: "Paguei, mas a tela diz Pagamento em confirmação.", solution: "A confirmação da InfinitePay chega em instantes. Atualize a tela de Assinatura em 1 minuto." }],
     relatedGuides: ["onboarding-loja"],
     version: V,
     updatedAt: U,

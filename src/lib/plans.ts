@@ -17,7 +17,7 @@ export type PlanInfo = {
   popular?: boolean;
 };
 
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 30;
 /** Dias de atraso até o painel ficar só leitura. */
 export const READ_ONLY_AFTER_DAYS = 7;
 /** Preço de fundador: primeiras lojas pagantes do plano Profissional, travado enquanto a assinatura durar. */
