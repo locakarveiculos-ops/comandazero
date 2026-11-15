@@ -21,7 +21,8 @@ async function login(browser: Browser, who: "OWNER" | "CASHIER" | "ADMIN" | "OUT
   await page.getByLabel("Senha", { exact: true }).fill(env[`E2E_${who}_PASSWORD`]);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   // Login conclui quando sai de /entrar (cookie de sessão gravado).
-  await page.waitForURL((u) => !u.pathname.startsWith("/entrar"), { timeout: 15000 });
+  // Espera só o HTML (imagens externas da loja podem atrasar o evento "load").
+  await page.waitForURL((u) => !u.pathname.startsWith("/entrar"), { timeout: 20000, waitUntil: "domcontentloaded" });
   return { ctx, page };
 }
 

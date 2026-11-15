@@ -63,7 +63,28 @@ export async function createCheckoutLink(i: LinkInput) {
 
 export type PaymentCheck = { success: boolean; paid: boolean; amount?: number; paid_amount?: number; installments?: number; capture_method?: string };
 
-/** Confirmação oficial do pagamento. paid=true só quando order_nsu, transação e fatura batem. */
-export function checkPayment(p: { orderNsu: string; transactionNsu: string; slug: string }) {
-  return post<PaymentCheck>("/payment_check", { handle: PLATFORM_HANDLE, order_nsu: p.orderNsu, transaction_nsu: p.transactionNsu, slug: p.slug });
+/**
+ * Confirmação oficial do pagamento. paid=true só quando order_nsu, transação e fatura batem.
+ * Transação desconhecida responde 404 {"success":false,"message":"Not found"} (verificado em 15/11/2026):
+ * é "não pago", não falha do provedor — o aviso não deve ser reenviado para sempre.
+ */
+export async function checkPayment(p: { orderNsu: string; transactionNsu: string; slug: string }): Promise<PaymentCheck> {
+  const r = await fetch(`${BASE}/payment_check`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ handle: PLATFORM_HANDLE, order_nsu: p.orderNsu, transaction_nsu: p.transactionNsu, slug: p.slug }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const d = (await r.json().catch(() => ({}))) as Partial<PaymentCheck>;
+  if (r.status === 404) return { success: false, paid: false };
+  if (!r.ok) throw new HttpError(502, `Consulta de pagamento falhou (HTTP ${r.status}).`);
+  const int = (v: unknown) => (Number.isInteger(v) ? (v as number) : undefined);
+  return {
+    success: d.success === true,
+    paid: d.paid === true,
+    amount: int(d.amount),
+    paid_amount: int(d.paid_amount),
+    installments: int(d.installments),
+    capture_method: typeof d.capture_method === "string" ? d.capture_method : undefined,
+  };
 }
