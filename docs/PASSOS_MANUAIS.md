@@ -12,21 +12,17 @@ Cada item diz **onde**, **o quê** e **como conferir**. Nenhum segredo vai para 
    - Depois, apagar `GITHUB_TOKEN`, `VERCEL_TOKEN` e `SUPABASE_ACCESS_TOKEN` do `.env.local`.
 2. **Trocar a senha do admin** `jefferson.22gs@gmail.com` (foi enviada em conversa): entrar em `/entrar` › Esqueci minha senha.
 
-## 2. E-mails de autenticação (Supabase + Resend)
+## 2. E-mails (Resend + Supabase) — feito em 15/11/2026
 
-Situação em 15/11/2026: a chave do Resend recebida é **só de envio** (`restricted_api_key`): não cadastra domínio.
-Enquanto o domínio não estiver verificado no Resend, o Supabase continua no servidor padrão (2 e-mails/hora, textos em inglês).
-
-**O DNS de `comandazero.com.br` hoje bloqueia e-mail** (padrão de domínio novo na Cloudflare):
-`MX .` (MX nulo), `TXT v=spf1 -all` e `_dmarc v=DMARC1; p=reject;`. Esses três precisam ser trocados pelos do Resend.
-
-1. Resend › Domains › Add: `comandazero.com.br`, região São Paulo (ou mandar uma chave "Full access" para eu fazer).
-2. Copiar os registros que o Resend mostrar (MX e TXT em `send.comandazero.com.br`, TXT DKIM em `resend._domainkey`).
-   Eu crio na Cloudflare (DNS only), troco o SPF do raiz e o DMARC para `p=none` durante a validação.
-3. Resend › Verify. Conferir "Verified".
-4. Depois disso eu configuro o SMTP no Supabase (host `smtp.resend.com`, porta 465, usuário `resend`, remetente
-   `nao-responda@comandazero.com.br`), aplico os modelos em português de `supabase/templates/` e subo o limite para 30 e-mails/hora.
-5. **Confirmação de e-mail no cadastro**: segue desligada a pedido do dono. Religar só com autorização.
+- Domínio `comandazero.com.br` verificado no Resend (região São Paulo). Registros na Cloudflare, todos DNS only:
+  `CNAME send → send.forge.rmta.net`, `CNAME rsend → rsend-sae1.forge.rmta.net`, `TXT resend._domainkey` (DKIM).
+- DMARC: `v=DMARC1; p=quarantine; adkim=r; aspf=r;` (antes `p=reject`, que recusaria todo e-mail do domínio).
+  O MX nulo e o SPF `-all` do raiz continuam: o domínio não recebe e-mail e só envia pelo subdomínio do Resend.
+- Supabase Auth usa o Resend (SMTP `smtp.resend.com:465`, remetente `ComandaZero <nao-responda@comandazero.com.br>`),
+  limite de 30 e-mails/hora e os modelos em português de `supabase/templates/`.
+- Testado: e-mail direto pelo Resend e recuperação de senha pelo Supabase para `jefferson.22gs@gmail.com`.
+- **Confirmação de e-mail no cadastro**: segue desligada a pedido do dono. Religar só com autorização
+  (Supabase › Authentication › Providers › Email › Confirm email).
 
 ## 3. URL do site (feito em 15/11/2026)
 
@@ -68,9 +64,12 @@ Conta configurada: InfiniteTag `$marco-boggian`. CNPJ informado pelo proprietár
 
 - Cloudflare (zona ativa, nameservers `jeff`/`jo.ns.cloudflare.com`), todos **DNS only**:
   `A comandazero.com.br → 216.198.79.1` e `64.29.17.1`; `CNAME www` e `CNAME *` → `070244b9354b2391.vercel-dns-017.com`.
-- Vercel: `comandazero.com.br`, `www.comandazero.com.br` (redireciona 308 para o raiz) e `*.comandazero.com.br` (subdomínio por loja).
+- Certificado do wildcard: `NS _acme-challenge → ns1.vercel-dns.com` e `ns2.vercel-dns.com` (delega só a validação à Vercel)
+  e zona "Vercel DNS" habilitada no domínio da Vercel. Certificado `*.comandazero.com.br` emitido em 15/11/2026; a Vercel renova sozinha.
+  **Não apagar esses dois NS**, senão a renovação falha.
+- Vercel: `comandazero.com.br`, `www.comandazero.com.br` (redireciona 308 para o raiz) e `*.comandazero.com.br`.
+- Cada loja abre em `<subdomínio>.comandazero.com.br` (o subdomínio é o endereço sem hífens; o servidor acha a loja pelo campo `subdomain`).
 - O token da Cloudflare tem restrição de IP: só funciona saindo por IPv4 (`curl -4`). Pelo IPv6 a API responde 9109.
-- Certificado do wildcard é emitido pela Vercel; até sair, `<loja>.comandazero.com.br` pode falhar no HTTPS. O caminho `/loja/<slug>` funciona sempre.
 
 ## 8. Antes da primeira loja pagante
 
