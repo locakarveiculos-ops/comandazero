@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { READ_ONLY_AFTER_DAYS } from "@/lib/plans";
+import { READ_ONLY_AFTER_DAYS, effectivePlan } from "@/lib/plans";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export type SubscriptionState = {
@@ -16,6 +16,8 @@ export type SubscriptionState = {
   readOnly: boolean;
   /** Ativa e vence em menos de 10 dias: hora de renovar (InfinitePay não cobra sozinha). */
   renewSoon: boolean;
+  /** Plano usado nas regras: teste grátis = completo; depois, o plano pago. */
+  effectivePlan: "starter" | "pro" | "enterprise";
 };
 
 const DAY = 86_400_000;
@@ -45,5 +47,6 @@ export const getSubscription = cache(async (tenantId: string): Promise<Subscript
     trialDaysLeft,
     readOnly,
     renewSoon: status === "active" && !!data.current_period_end && new Date(data.current_period_end).getTime() - now < 10 * DAY,
+    effectivePlan: effectivePlan({ status, plan: data.plan }),
   };
 });

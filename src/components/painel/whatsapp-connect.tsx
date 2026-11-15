@@ -27,7 +27,8 @@ const LABEL: Record<string, { text: string; tone: "green" | "amber" | "neutral" 
 };
 
 /** Conexão do WhatsApp da loja pelo motor Whaileys: QR na tela ou código de pareamento de 8 dígitos. */
-export function WhatsappConnect({ tenant }: { tenant: Tenant }) {
+/** included: plano (ou teste grátis) libera o WhatsApp — conecta sem código de ativação. */
+export function WhatsappConnect({ tenant, included = false }: { tenant: Tenant; included?: boolean }) {
   const stored = useClientValue(() => readChannelBlob(tenant.slug), "");
   const [override, setBlob] = useState<string | null>(null);
   const blob = override ?? stored;
@@ -179,13 +180,14 @@ export function WhatsappConnect({ tenant }: { tenant: Tenant }) {
         </div>
       ) : (
         <div className="grid gap-4">
-          {!blob && (
-            <Field label="Código de ativação" id="wa-act" hint="Fornecido pela plataforma ao contratar o plano Pro. Cria o canal exclusivo desta loja.">
+          {!blob && included && <p className="rounded-xl bg-cz-success/10 p-3 text-sm">Incluído no seu plano (e liberado no teste grátis). Conecte o número da loja abaixo.</p>}
+          {!blob && !included && (
+            <Field label="Código de ativação" id="wa-act" hint="WhatsApp faz parte do plano Profissional. Com o código da plataforma, o canal é liberado manualmente.">
               <Input id="wa-act" type="password" autoComplete="off" value={activation} onChange={(e) => setActivation(e.target.value)} />
             </Field>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button variant="brand" onClick={() => connect(false)} loading={loading === "qr"} disabled={!blob && !activation}>
+            <Button variant="brand" onClick={() => connect(false)} loading={loading === "qr"} disabled={!blob && !activation && !included}>
               <QrCode className="size-4" aria-hidden /> Conectar com QR Code
             </Button>
           </div>
@@ -193,7 +195,7 @@ export function WhatsappConnect({ tenant }: { tenant: Tenant }) {
             <Field label="Ou receba um código de 8 dígitos" id="wa-phone" hint="Número do WhatsApp da loja, com DDD.">
               <Input id="wa-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder={formatPhone(tenant.whatsapp)} />
             </Field>
-            <Button variant="secondary" onClick={() => connect(true)} loading={loading === "phone"} disabled={(!blob && !activation) || phone.replace(/\D/g, "").length < 10}>
+            <Button variant="secondary" onClick={() => connect(true)} loading={loading === "phone"} disabled={(!blob && !activation && !included) || phone.replace(/\D/g, "").length < 10}>
               <Smartphone className="size-4" aria-hidden /> Gerar código
             </Button>
           </div>

@@ -3,6 +3,20 @@ import { HttpError, appUrl, errorResponse, json, rateLimit, readJson } from "@/l
 import { channelsReady, openChannel, provisionChannel, resealChannel, type OpenChannel } from "@/lib/integrations/whatsapp/channel";
 import { jidUser } from "@/lib/integrations/whatsapp/card";
 import { WhaileysError, whaileysConnect, whaileysLogout, whaileysStatus, type SessionStatus } from "@/lib/integrations/whatsapp/whaileys";
+import { can, getTenantAccess, getUser } from "@/lib/server/auth";
+import { supabaseServer } from "@/lib/supabase/server";
+
+/**
+ * Dono/gerente de loja real cujo plano inclui WhatsApp (teste grátis = completo) cria o canal sem código.
+ * O código de ativação continua aceito (liberação manual pela plataforma).
+ */
+async function planAllowsWhatsapp(slug: string) {
+  if (!(await getUser())) return false;
+  const access = await getTenantAccess(slug);
+  if (!access || access.isDemo || !can(access.role, "integrations.edit")) return false;
+  const { data } = await (await supabaseServer()).rpc("tenant_has_feature", { t: access.id, f: "whatsapp" });
+  return data === true;
+}
 
 /**
  * POST /api/whatsapp/channel — WhatsApp de cada loja (motor Whaileys), operado pelo painel do lojista.
@@ -74,7 +88,8 @@ export async function POST(req: Request) {
         let channel = ch;
         let blob = body.blob;
         if (!channel) {
-          if (!activationOk(body.activation)) throw new HttpError(403, "Código de ativação inválido. Peça ao suporte da plataforma.");
+          if (!activationOk(body.activation) && !(await planAllowsWhatsapp(slug)))
+            throw new HttpError(403, "WhatsApp não está incluído no plano desta loja. Veja em Assinatura.");
           rateLimit(`prov:${ip}`, 5, 3_600_000);
           const created = await provisionChannel(slug, appUrl(req));
           channel = created.channel;

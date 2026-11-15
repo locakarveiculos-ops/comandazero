@@ -1,6 +1,6 @@
 "use client";
 
-/** Reduz a foto enviada para caber no armazenamento do navegador (Fase 2: upload para o Supabase Storage). */
+/** Reduz a foto (lado máximo e qualidade) e devolve data URL WebP (ou JPEG se o navegador não gerar WebP). */
 export async function fileToDataUrl(file: File, maxSide = 900, quality = 0.78): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Envie uma imagem (JPG, PNG ou WebP).");
   if (file.size > 12_000_000) throw new Error("Imagem acima de 12 MB.");
@@ -13,4 +13,14 @@ export async function fileToDataUrl(file: File, maxSide = 900, quality = 0.78): 
   bitmap.close();
   const webp = canvas.toDataURL("image/webp", quality);
   return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", quality);
+}
+
+/** Converte a data URL reduzida de volta em arquivo, para enviar ao Storage já leve (loja real). */
+export function dataUrlToFile(dataUrl: string, name: string): File {
+  const [head, b64] = dataUrl.split(",");
+  const mime = /data:([^;]+)/.exec(head)?.[1] ?? "image/webp";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], `${name}.${mime === "image/jpeg" ? "jpg" : "webp"}`, { type: mime });
 }
