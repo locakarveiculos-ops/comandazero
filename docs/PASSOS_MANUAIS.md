@@ -41,22 +41,23 @@ Hoje o Supabase manda os e-mails com o servidor padrão: **máximo 2 por hora** 
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Links dos e-mails, canonical, sitemap | Domínio oficial |
 | `NEXT_PUBLIC_SALES_WHATSAPP` | Botão flutuante da landing | Número comercial, `55DDDNUMERO` |
-| `ASAAS_API_KEY` | Cobrança da assinatura | Asaas › Integrações › API (sandbox: `$aact_hmlg_…`) |
-| `ASAAS_SUBSCRIPTION_WEBHOOK_TOKEN` | Confirmação de pagamento da assinatura | Texto aleatório longo, igual ao cadastrado no Asaas |
+| `INFINITEPAY_HANDLE` | Conta que recebe as assinaturas | InfiniteTag sem `$` (padrão no código: `marco-boggian`) |
+| `INFINITEPAY_API_KEY` | Opcional: link de uso único que vence em 7 dias | Conta Web › Configurações do Checkout › API Key (`inchk_…`) |
 | `MERCADOPAGO_WEBHOOK_SECRET` (e demais `*_WEBHOOK_SECRET`) | Pagamento dos pedidos das lojas | Painel de cada gateway |
 | `NEXT_PUBLIC_AUTH_GOOGLE` | Mostra "Continuar com Google" | `1` só depois do item 6 |
 
-Sem `ASAAS_API_KEY` a tela de Assinatura mostra "pagamento online sendo ativado" (nunca simula cobrança).
+Enquanto o checkout integrado não estiver ligado na InfinitePay, a tela de Assinatura avisa "pagamento online sendo ativado" (nunca simula cobrança).
 
-## 5. Asaas (assinatura da plataforma)
+## 5. InfinitePay (recebimento de todos os planos)
 
-1. Criar conta em [sandbox.asaas.com](https://sandbox.asaas.com) e gerar a chave de API.
-2. Asaas › Integrações › Webhooks › novo webhook:
-   - URL `https://<domínio>/api/webhooks/assinatura`
-   - Token de autenticação = valor de `ASAAS_SUBSCRIPTION_WEBHOOK_TOKEN`
-   - Eventos: `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `SUBSCRIPTION_DELETED`, `SUBSCRIPTION_INACTIVATED`.
-3. Conferir no sandbox: dono da loja de teste abre `/painel/<loja>/assinatura`, assina, paga a fatura de teste e a situação muda para **Ativa** (e aparece "Pagamento recebido" no histórico do Super Admin).
-4. Para produção: trocar pela chave `$aact_prod_…` (ou `ASAAS_ENV=production`) e recadastrar o webhook na conta de produção.
+Conta configurada: InfiniteTag `$marco-boggian`. CNPJ informado pelo proprietário: 59.760.458/0001-91 (vínculo com a conta ainda não validado pela API). O recebimento é direcionado pela InfiniteTag, não pelo CNPJ.
+
+1. **Ligar o Checkout Integrado** (obrigatório): App InfinitePay ou [Conta Web](https://app.infinitepay.io/external-checkout#configuracoes) › Configurações do Checkout › **Habilitar checkout integrado**. Hoje a API responde `external_checkout_not_enabled` para esta conta.
+2. (Opcional) Na mesma tela, criar uma API Key (`inchk_…`) e cadastrar `INFINITEPAY_API_KEY` na Vercel. Com ela, cada link de pagamento vale 7 dias e aceita um único pagamento.
+3. Não precisa cadastrar webhook: cada link já leva `https://<domínio>/api/webhooks/assinatura`. O aviso não é assinado, por isso o sistema confirma todo pagamento no `/payment_check` antes de ativar o plano.
+4. Não existe sandbox: para testar, assine o plano numa loja de teste e pague R$ 1,00 ajustando o preço temporariamente, ou pague um plano real e estorne pelo app.
+5. Conferir: depois do pagamento, a tela de Assinatura mostra **Ativa** e o comprovante; o Super Admin mostra "Pagamento recebido" no histórico e o MRR sobe.
+6. **Recorrência**: a API da InfinitePay não cobra sozinha. O plano anual vale 12 meses; no mensal, o dono renova pela tela de Assinatura (aviso 10 dias antes; só leitura 7 dias após vencer).
 
 ## 6. Login com Google (opcional)
 
