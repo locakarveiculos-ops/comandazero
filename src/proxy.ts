@@ -66,11 +66,27 @@ export function needsLogin(pathname: string) {
   return !!m && !DEMO_SLUGS.has(m[1]);
 }
 
+// Subdomínio da loja (sem hífens, ex. "lojatestep0") → slug real ("loja-teste-p0").
+const DEMO_SUBDOMAINS: Record<string, string> = { cafeeflor: "cafe-e-flor", burgerstation: "burger-station" };
+async function slugFromSubdomain(sub: string) {
+  if (DEMO_SUBDOMAINS[sub]) return DEMO_SUBDOMAINS[sub];
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return sub;
+  const r = await fetch(`${url}/rest/v1/tenants?select=slug&subdomain=eq.${encodeURIComponent(sub)}&limit=1`, {
+    headers: { apikey: key, authorization: `Bearer ${key}` },
+    next: { revalidate: 300 },
+  }).catch(() => null);
+  const rows = r?.ok ? ((await r.json()) as { slug: string }[]) : [];
+  return rows[0]?.slug ?? sub;
+}
+
 export async function proxy(req: NextRequest) {
-  const slug = tenantFromHost(req.headers.get("host") || "");
-  if (slug) {
+  const sub = tenantFromHost(req.headers.get("host") || "");
+  if (sub) {
     const url = req.nextUrl.clone();
-    if (url.pathname.startsWith("/loja/")) return NextResponse.next();
+    if (url.pathname.startsWith("/loja/") || url.pathname.startsWith("/api/")) return NextResponse.next();
+    const slug = await slugFromSubdomain(sub);
     url.pathname = `/loja/${slug}${url.pathname === "/" ? "" : url.pathname}`;
     return NextResponse.rewrite(url);
   }
