@@ -1,55 +1,53 @@
 import { z } from "zod";
-import { createSubscription, ensureCustomer, firstPaymentUrl } from "@/lib/server/asaas";
+import { SITE_URL } from "@/config/saas-brand";
 import { getTenantAccess, getUser } from "@/lib/server/auth";
 import { HttpError, errorResponse, json, rateLimit, readJson } from "@/lib/server/http";
+import { createCheckoutLink } from "@/lib/server/infinitepay";
 import { cyclePrice, monthlyValue, planById } from "@/lib/plans";
 import { supabaseService } from "@/lib/supabase/server";
 
 /**
- * POST /api/assinatura { slug, plan, cycle, cpfCnpj } — dono assina um plano.
- * Preço sai de src/lib/plans.ts (nunca do navegador). Cria cliente + assinatura no Asaas e devolve o link da fatura.
- * A assinatura só vira "active" quando o webhook do Asaas confirma o pagamento.
+ * POST /api/assinatura { slug, plan, cycle } — dono gera a fatura do plano e recebe o link da InfinitePay.
+ * Preço sai de src/lib/plans.ts (nunca do navegador). O plano só ativa depois do /payment_check (webhook ou volta do checkout).
+ * Cada ciclo é uma fatura nova: a InfinitePay não tem cobrança recorrente automática pela API.
  */
-const Body = z.object({
-  slug: z.string().min(2).max(60),
-  plan: z.enum(["starter", "pro", "enterprise"]),
-  cycle: z.enum(["monthly", "yearly"]),
-  cpfCnpj: z.string().transform((v) => v.replace(/\D/g, "")).pipe(z.string().regex(/^(\d{11}|\d{14})$/, "CPF ou CNPJ inválido")),
-});
+const Body = z.object({ slug: z.string().min(2).max(60), plan: z.enum(["starter", "pro", "enterprise"]), cycle: z.enum(["monthly", "yearly"]) });
 
 export async function POST(req: Request) {
   try {
     const user = await getUser();
     if (!user) throw new HttpError(401, "Entre na sua conta.");
-    rateLimit(`assinatura:${user.id}`, 5, 60_000);
+    rateLimit(`assinatura:${user.id}`, 6, 60_000);
     const parsed = Body.safeParse(await readJson(req));
-    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? "Dados inválidos.");
-    const { slug, plan, cycle, cpfCnpj } = parsed.data;
+    if (!parsed.success) throw new HttpError(400, "Escolha o plano e o ciclo.");
+    const { slug, plan, cycle } = parsed.data;
     const access = await getTenantAccess(slug);
     if (!access || access.isDemo) throw new HttpError(404, "Loja não encontrada.");
     if (access.role !== "owner") throw new HttpError(403, "Só o dono da loja pode assinar.");
 
-    const sb = supabaseService();
-    const { data: sub } = await sb.from("subscriptions").select("status, asaas_customer_id, asaas_subscription_id").eq("tenant_id", access.id).maybeSingle();
-    if (sub?.status === "active") throw new HttpError(409, "Esta loja já tem assinatura ativa.");
-
     const info = planById(plan);
-    const customer = await ensureCustomer(
-      { name: access.name, email: user.email ?? "", cpfCnpj, phone: (user.user_metadata as { whatsapp?: string })?.whatsapp?.replace(/^55/, ""), externalReference: access.id },
-      sub?.asaas_customer_id,
-    );
-    const created = await createSubscription({
-      customer,
-      value: cyclePrice(info, cycle),
-      cycle: cycle === "yearly" ? "YEARLY" : "MONTHLY",
-      description: `ComandaZero ${info.name} (${cycle === "yearly" ? "anual" : "mensal"}) · ${access.name}`,
-      externalReference: access.id,
+    const amountCents = Math.round(cyclePrice(info, cycle) * 100);
+    const sb = supabaseService();
+    const { data: inv, error } = await sb
+      .from("subscription_invoices")
+      .insert({ tenant_id: access.id, plan, cycle, amount_cents: amountCents, monthly_value: monthlyValue(info, cycle), created_by: user.id })
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    const origin = (process.env.NEXT_PUBLIC_SITE_URL || SITE_URL).replace(/\/+$/, "");
+    const meta = (user.user_metadata ?? {}) as { name?: string; whatsapp?: string };
+    const url = await createCheckoutLink({
+      orderNsu: inv.id,
+      amountCents,
+      description: `ComandaZero ${info.name} ${cycle === "yearly" ? "anual" : "mensal"} - ${access.name}`,
+      redirectUrl: `${origin}/painel/${slug}/assinatura/retorno`,
+      webhookUrl: `${origin}/api/webhooks/assinatura`,
+      customer: { name: meta.name, email: user.email ?? undefined, phone: meta.whatsapp },
     });
-    await sb
-      .from("subscriptions")
-      .upsert({ tenant_id: access.id, plan, cycle, monthly_value: monthlyValue(info, cycle), asaas_customer_id: customer, asaas_subscription_id: created.id, updated_at: new Date().toISOString() });
-    await sb.from("audit_log").insert({ actor: user.id, actor_email: user.email, action: "assinatura.criar", tenant_id: access.id, details: { slug, plan, cycle } });
-    return json({ invoiceUrl: await firstPaymentUrl(created.id) }, 201);
+    await sb.from("subscription_invoices").update({ link_url: url }).eq("id", inv.id);
+    await sb.from("audit_log").insert({ actor: user.id, actor_email: user.email, action: "assinatura.fatura", tenant_id: access.id, details: { slug, plan, cycle, centavos: amountCents } });
+    return json({ checkoutUrl: url }, 201);
   } catch (e) {
     return errorResponse(e);
   }
