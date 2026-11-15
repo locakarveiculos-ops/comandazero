@@ -14,6 +14,8 @@ export type SubscriptionState = {
   /** Dias até o fim do teste (negativo = vencido). */
   trialDaysLeft: number | null;
   readOnly: boolean;
+  /** Ativa e vence em menos de 10 dias: hora de renovar (InfinitePay não cobra sozinha). */
+  renewSoon: boolean;
 };
 
 const DAY = 86_400_000;
@@ -26,17 +28,22 @@ export const getSubscription = cache(async (tenantId: string): Promise<Subscript
   if (!data) return null;
   const now = Date.now();
   const trialDaysLeft = data.trial_ends_at ? Math.ceil((new Date(data.trial_ends_at).getTime() - now) / DAY) : null;
-  const overdueDays = data.overdue_since ? (now - new Date(data.overdue_since).getTime()) / DAY : 0;
-  const readOnly = data.status === "canceled" || (data.status === "trial" && trialDaysLeft !== null && trialDaysLeft < 0) || (data.status === "overdue" && overdueDays > READ_ONLY_AFTER_DAYS);
+  // InfinitePay não tem recorrência: assinatura ativa com o período vencido conta como atraso desde o vencimento.
+  const lapsed = data.status === "active" && !!data.current_period_end && new Date(data.current_period_end).getTime() < now;
+  const status = lapsed ? "overdue" : data.status;
+  const overdueSince = lapsed ? data.current_period_end : data.overdue_since;
+  const overdueDays = overdueSince ? (now - new Date(overdueSince).getTime()) / DAY : 0;
+  const readOnly = status === "canceled" || (status === "trial" && trialDaysLeft !== null && trialDaysLeft < 0) || (status === "overdue" && overdueDays > READ_ONLY_AFTER_DAYS);
   return {
-    status: data.status,
+    status,
     plan: data.plan,
     cycle: data.cycle,
     monthlyValue: data.monthly_value === null ? null : Number(data.monthly_value),
     trialEndsAt: data.trial_ends_at,
     currentPeriodEnd: data.current_period_end,
-    overdueSince: data.overdue_since,
+    overdueSince,
     trialDaysLeft,
     readOnly,
+    renewSoon: status === "active" && !!data.current_period_end && new Date(data.current_period_end).getTime() - now < 10 * DAY,
   };
 });

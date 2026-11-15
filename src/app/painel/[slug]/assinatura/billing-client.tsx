@@ -4,7 +4,7 @@ import { Check, ExternalLink, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BillingBanner } from "@/components/painel/billing-banner";
-import { Badge, Button, Card, Field, Input } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import { PLANS, cyclePrice, planById, type Cycle } from "@/lib/plans";
 import type { SubscriptionState } from "@/lib/server/subscription";
 import type { Plan } from "@/lib/types";
@@ -12,29 +12,26 @@ import { cn, money } from "@/lib/utils";
 
 const STATUS: Record<SubscriptionState["status"], string> = { trial: "Teste grátis", active: "Ativa", overdue: "Pagamento pendente", canceled: "Cancelada" };
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "—");
-const maskDoc = (v: string) => {
-  const d = v.replace(/\D/g, "").slice(0, 14);
-  if (d.length <= 11) return d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-  return d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
-};
+const METHOD: Record<string, string> = { pix: "Pix", credit_card: "Cartão" };
 
-export function BillingClient({ slug, sub, billingReady }: { slug: string; sub: SubscriptionState | null; billingReady: boolean }) {
+export type Invoice = { id: string; plan: Plan; cycle: Cycle; amount_cents: number; status: "pending" | "paid" | "canceled"; capture_method: string | null; receipt_url: string | null; created_at: string; paid_at: string | null };
+
+/** renewSoon (calculado no servidor): ativa com menos de 10 dias para vencer; mostra os planos para renovar ou trocar. */
+export function BillingClient({ slug, sub, invoices, renewSoon }: { slug: string; sub: SubscriptionState | null; invoices: Invoice[]; renewSoon: boolean }) {
   const [cycle, setCycle] = useState<Cycle>(sub?.cycle ?? "monthly");
   const [plan, setPlan] = useState<Plan>(sub?.plan ?? "pro");
-  const [doc, setDoc] = useState("");
   const [loading, setLoading] = useState(false);
   const active = sub?.status === "active";
+  const paid = invoices.filter((i) => i.status === "paid");
 
   const subscribe = async () => {
-    const digits = doc.replace(/\D/g, "");
-    if (digits.length !== 11 && digits.length !== 14) return toast.error("Informe um CPF ou CNPJ válido para a nota.");
     setLoading(true);
-    const r = await fetch("/api/assinatura", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, plan, cycle, cpfCnpj: digits }) });
+    const r = await fetch("/api/assinatura", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, plan, cycle }) });
     const data = await r.json().catch(() => ({}));
     setLoading(false);
-    if (!r.ok) return toast.error(data.error ?? "Não foi possível criar a assinatura.");
-    toast.success("Assinatura criada. Abrindo a fatura…");
-    if (data.invoiceUrl) window.location.assign(data.invoiceUrl);
+    if (!r.ok) return toast.error(data.error ?? "Não foi possível gerar o pagamento.");
+    toast.success("Abrindo o pagamento na InfinitePay…");
+    window.location.assign(data.checkoutUrl);
   };
 
   return (
@@ -67,8 +64,9 @@ export function BillingClient({ slug, sub, billingReady }: { slug: string; sub: 
         </Card>
       )}
 
-      {!active && (
+      {(!active || renewSoon) && (
         <>
+          {renewSoon && <p className="text-sm font-semibold">Seu período termina em breve. Renove agora para não ficar sem o painel.</p>}
           <div role="radiogroup" aria-label="Ciclo de cobrança" className="inline-flex w-fit rounded-full border border-cz-border bg-cz-surface p-1">
             {(["monthly", "yearly"] as const).map((c) => (
               <button
@@ -115,24 +113,54 @@ export function BillingClient({ slug, sub, billingReady }: { slug: string; sub: 
           </div>
 
           <Card className="grid gap-4 sm:max-w-lg">
-            <Field label="CPF ou CNPJ para a nota fiscal" id="doc">
-              <Input id="doc" inputMode="numeric" value={doc} onChange={(e) => setDoc(maskDoc(e.target.value))} placeholder="000.000.000-00" />
-            </Field>
             <p className="flex gap-2 text-sm text-cz-muted">
               <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-              Pagamento por Pix, boleto ou cartão na página segura do Asaas. A ComandaZero não recebe nem guarda dados de cartão.
+              Pagamento por Pix ou cartão (até 12x) na página segura da InfinitePay. A ComandaZero não recebe nem guarda dados de cartão. O plano ativa assim que o pagamento é confirmado.
             </p>
-            {billingReady ? (
-              <Button variant="brand" size="lg" onClick={subscribe} loading={loading}>
-                Assinar {planById(plan).name} <ExternalLink className="size-4" aria-hidden />
-              </Button>
-            ) : (
-              <p role="status" className="rounded-[10px] border border-cz-border bg-cz-surface-2 p-3 text-sm">
-                O pagamento online da assinatura está sendo ativado. Para assinar agora, fale com o suporte pelo WhatsApp.
-              </p>
-            )}
+            <Button variant="brand" size="lg" onClick={subscribe} loading={loading}>
+              Pagar {planById(plan).name} · {money(cyclePrice(planById(plan), cycle))} <ExternalLink className="size-4" aria-hidden />
+            </Button>
+            <p className="text-xs text-cz-muted">{cycle === "yearly" ? "Cobrança anual: você paga uma vez e o plano vale por 12 meses." : "Cobrança mensal: a cada mês você recebe o aviso e paga a renovação aqui."}</p>
           </Card>
         </>
+      )}
+
+      {paid.length > 0 && (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full min-w-[480px] text-left text-sm">
+            <caption className="p-4 text-left font-bold">Pagamentos</caption>
+            <thead className="border-y border-cz-border text-xs uppercase tracking-wider text-cz-muted">
+              <tr>
+                <th className="p-4">Data</th>
+                <th className="p-4">Plano</th>
+                <th className="p-4">Valor</th>
+                <th className="p-4">Meio</th>
+                <th className="p-4">
+                  <span className="sr-only">Comprovante</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-cz-border">
+              {paid.map((i) => (
+                <tr key={i.id}>
+                  <td className="p-4">{fmt(i.paid_at)}</td>
+                  <td className="p-4">
+                    {planById(i.plan).name} · {i.cycle === "yearly" ? "anual" : "mensal"}
+                  </td>
+                  <td className="p-4 tabular-nums">{money(i.amount_cents / 100)}</td>
+                  <td className="p-4">{METHOD[i.capture_method ?? ""] ?? "—"}</td>
+                  <td className="p-4 text-right">
+                    {i.receipt_url && (
+                      <a href={i.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold underline">
+                        Comprovante
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       )}
     </div>
   );

@@ -186,6 +186,8 @@ test.describe("Assinatura e equipe", () => {
     await expect(owner.page.getByRole("heading", { level: 1, name: "Assinatura" })).toBeVisible();
     await expect(owner.page.getByRole("radio", { name: /^Profissional/ })).toBeVisible();
     await expect(owner.page.getByRole("radio", { name: /^Profissional/ })).toContainText("R$ 189,90");
+    await expect(owner.page.getByRole("button", { name: /Pagar Profissional · R\$ 189,90/ })).toBeVisible();
+    await expect(owner.page.getByText(/InfinitePay/).first()).toBeVisible();
     await owner.ctx.close();
 
     const cashier = await login(browser, "CASHIER");
@@ -216,8 +218,12 @@ test.describe("Assinatura e equipe", () => {
     await ctx.close();
   });
 
-  test("webhook da assinatura recusa sem token", async ({ request }) => {
-    const r = await request.post("/api/webhooks/assinatura", { data: { event: "PAYMENT_RECEIVED" } });
-    expect([401, 503]).toContain(r.status());
+  test("aviso forjado da InfinitePay não ativa assinatura", async ({ request }) => {
+    // Sem dados mínimos: ignorado.
+    expect(await (await request.post("/api/webhooks/assinatura", { data: { event: "paid" } })).json()).toEqual({ ignored: true });
+    // Fatura inexistente com transação inventada: não confirma (o servidor consulta o /payment_check).
+    const r = await request.post("/api/webhooks/assinatura", { data: { order_nsu: "00000000-0000-4000-8000-000000000000", transaction_nsu: "forjado", invoice_slug: "forjado", paid_amount: 18990 } });
+    expect(r.status()).toBe(200);
+    expect((await r.json()).ok).toBe(false);
   });
 });
