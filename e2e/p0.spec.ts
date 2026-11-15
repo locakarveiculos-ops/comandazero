@@ -227,3 +227,48 @@ test.describe("Assinatura e equipe", () => {
     expect((await r.json()).ok).toBe(false);
   });
 });
+
+test.describe("Loja real: cardápio, marca e integrações", () => {
+  test.skip(!hasUsers, "usuários de teste ausentes");
+
+  test("produto novo aparece na lista sem recarregar e some ao excluir", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/cardapio`);
+    await page.waitForURL(`**/painel/${SLUG}/cardapio`);
+    const name = `Produto E2E ${Date.now().toString().slice(-5)}`;
+    await page.getByRole("button", { name: "Novo produto" }).click();
+    await page.getByLabel("Nome", { exact: true }).fill(name);
+    await page.getByLabel("Preço", { exact: true }).fill("7,50");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByRole("main").getByText(name)).toBeVisible({ timeout: 5000 });
+    // Abre e exclui (também sem recarregar).
+    page.on("dialog", (d) => d.accept());
+    await page.getByRole("main").getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("button", { name: "Excluir" }).click();
+    await expect(page.getByRole("main").getByText(name)).toHaveCount(0, { timeout: 5000 });
+    await ctx.close();
+  });
+
+  test("marca: logo enviado e salvo continua depois de recarregar", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/aparencia`);
+    await page.waitForURL(`**/painel/${SLUG}/aparencia`);
+    // PNG 1x1 válido.
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    await page.getByLabel("Enviar logo").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
+    await expect(page.getByRole("img", { name: "Logo atual" })).toHaveAttribute("src", /brand-images/, { timeout: 15000 });
+    const src = await page.getByRole("img", { name: "Logo atual" }).getAttribute("src");
+    await page.getByRole("button", { name: "Salvar e publicar" }).click();
+    await expect(page.getByText("Marca publicada no cardápio e no app")).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("img", { name: "Logo atual" })).toHaveAttribute("src", src!);
+    await ctx.close();
+  });
+
+  test("integrações abrem completas no teste grátis, com WhatsApp incluído", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/integracoes`);
+    await page.waitForURL(`**/painel/${SLUG}/integracoes`);
+    for (const tab of ["WhatsApp", "Pagamentos", "E-mail (Resend)"]) await expect(page.getByRole("tab", { name: tab })).toBeVisible();
+    await expect(page.getByText(/Incluído no seu plano/)).toBeVisible();
+    await expect(page.getByLabel("Código de ativação")).toHaveCount(0);
+    await ctx.close();
+  });
+});
