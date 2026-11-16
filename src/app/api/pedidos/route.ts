@@ -1,6 +1,9 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { HttpError, errorResponse, json, rateLimit, readJson } from "@/lib/server/http";
 import { supabaseService } from "@/lib/supabase/server";
+import { pushNewOrder } from "@/lib/server/push";
+import { MODE_LABEL } from "@/lib/utils";
 
 /**
  * POST /api/pedidos — cria o pedido de uma loja real.
@@ -91,6 +94,11 @@ export async function POST(req: Request) {
       throw error;
     }
     const row = (data as { order_id: string; number: number; track_token: string; total: number; deposit: number | null }[])[0];
+    // Push para a equipe da loja depois de responder (não atrasa o cliente).
+    after(async () => {
+      const { data: o } = await sb.from("orders").select("tenant_id").eq("id", row.order_id).maybeSingle();
+      if (o) await pushNewOrder({ tenantId: o.tenant_id, slug: b.slug, number: row.number, total: Number(row.total), mode: MODE_LABEL[b.mode] });
+    });
     return json({ id: row.order_id, number: row.number, trackToken: row.track_token, total: Number(row.total), deposit: row.deposit == null ? null : Number(row.deposit) }, 201);
   } catch (e) {
     return errorResponse(e);

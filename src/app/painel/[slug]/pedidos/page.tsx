@@ -8,6 +8,7 @@ import { PrintButton } from "@/components/painel/receipt";
 import { Badge, Button, Empty } from "@/components/ui";
 import { markOrderPaid, markOrdersSeen } from "@/lib/repositories";
 import { changeOrderStatus, isRemote, useStoreOrders } from "@/lib/repositories/engine";
+import { PushToggle } from "@/components/push-toggle";
 import { toast } from "sonner";
 import type { Tenant } from "@/lib/types";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -42,7 +43,10 @@ export default function PedidosPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="cz-heading text-2xl font-bold">Pedidos</h1>
-          <p className="text-sm text-cz-muted">Chegam em tempo real do cardápio, das mesas e do PDV. Deixe esta aba aberta.</p>
+          <p className="text-sm text-cz-muted">
+            {isRemote(tenant) ? "Chegam em tempo real do cardápio, das mesas e do PDV. Com os avisos ligados, o aparelho toca mesmo com esta aba fechada." : "Chegam em tempo real do cardápio, das mesas e do PDV. Deixe esta aba aberta."}
+          </p>
+          {isRemote(tenant) && <PushToggle target={{ kind: "staff", slug: tenant.slug }} className="mt-2" />}
         </div>
         <div className="flex gap-1 rounded-full bg-cz-surface p-1 ring-1 ring-cz-border" role="tablist" aria-label="Filtrar pedidos" data-tour="pedidos-filtros">
           {FILTERS.map((f) => (
