@@ -1,7 +1,9 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { HttpError, errorResponse, json, readJson } from "@/lib/server/http";
 import { getUser } from "@/lib/server/auth";
 import { supabaseServer } from "@/lib/supabase/server";
+import { pushOrderStatus } from "@/lib/server/push";
 
 /**
  * POST /api/pedidos/<id>/status { status } — avança/cancela pedido de loja real.
@@ -24,6 +26,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (/PEDIDO_INEXISTENTE/.test(error.message)) throw new HttpError(404, "Pedido não encontrado.");
       throw error;
     }
+    // Push para o cliente que pediu avisos neste pedido.
+    after(() => pushOrderStatus(id, parsed.data.status));
     return json({ ok: true });
   } catch (e) {
     return errorResponse(e);

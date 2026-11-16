@@ -273,3 +273,23 @@ test.describe("Loja real: cardápio, marca e integrações", () => {
     await ctx.close();
   });
 });
+
+test.describe("Notificação push", () => {
+  const sub = { endpoint: "https://fcm.googleapis.com/fcm/send/teste-e2e", keys: { p256dh: "B".repeat(87), auth: "a".repeat(22) } };
+
+  test("API recusa anônimo, endpoint estranho e token de pedido errado", async ({ request }) => {
+    expect((await request.post("/api/push", { data: { kind: "staff", slug: SLUG, subscription: sub } })).status()).toBe(401);
+    const evil = { ...sub, endpoint: "https://exemplo-malicioso.com/x" };
+    expect((await request.post("/api/push", { data: { kind: "staff", slug: SLUG, subscription: evil } })).status()).toBe(400);
+    const r = await request.post("/api/push", { data: { kind: "customer", orderId: "00000000-0000-4000-8000-000000000000", token: "0".repeat(32), subscription: sub } });
+    expect(r.status()).toBe(404);
+  });
+
+  test.skip(!hasUsers, "usuários de teste ausentes");
+  test("painel da loja real mostra o botão de avisos", async ({ browser }) => {
+    const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/pedidos`);
+    await page.waitForURL(`**/painel/${SLUG}/pedidos`);
+    await expect(page.getByTestId("push-toggle").or(page.getByTestId("push-indisponivel"))).toBeVisible();
+    await ctx.close();
+  });
+});

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
+import { PushToggle } from "@/components/push-toggle";
 import { useHydrated } from "@/components/providers";
 import { useOrder } from "@/lib/repositories";
 import { isRemote } from "@/lib/repositories/engine";
@@ -118,6 +119,7 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
           </p>
           {order.paymentStatus === "pendente" && order.paymentMethod === "pix" && <p className="mt-3 rounded-xl bg-amber-100 p-3 text-sm font-semibold text-amber-950">Aguardando confirmação do Pix. Se já pagou, envie o comprovante abaixo.</p>}
           {order.scheduledFor && <p className="mt-3 rounded-xl bg-highlight/15 p-3 text-sm text-ink">Retirada agendada para <b>{fmtDateTime(order.scheduledFor)}</b></p>}
+          {remote && token && !["entregue", "cancelado"].includes(order.status) && <PushToggle variant="customer" target={{ kind: "customer", orderId: id, token }} className="mt-3 w-full" />}
 
           <ol className="mt-6 grid gap-0" aria-label="Andamento do pedido">
             {steps.map((s, i) => {
