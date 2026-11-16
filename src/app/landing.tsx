@@ -140,6 +140,7 @@ export function Landing() {
 
       <main id="conteudo" className="pt-[68px]">
         <Hero />
+        <VideoTour />
         <Segments />
         <Journey />
         <Profiles />
@@ -212,7 +213,10 @@ function Hero() {
               <PlayCircle className="size-4" aria-hidden /> Ver loja demo: Café e Flor
             </Link>
           </div>
-          <p className="mt-4 text-sm text-[#c5cbd5]">
+          <a href="#video" className="mt-3 inline-flex min-h-11 items-center gap-2 font-semibold text-cz-gold underline-offset-4 hover:underline">
+            <PlayCircle className="size-5" aria-hidden /> Assistir em 1 minuto
+          </a>
+          <p className="mt-2 text-sm text-[#c5cbd5]">
             Sem cartão de crédito. Outra demonstração:{" "}
             <Link href="/loja/burger-station" className="inline-flex min-h-11 items-center font-semibold text-[#e8dcc8] underline underline-offset-4">
               Burger Station
@@ -261,6 +265,46 @@ function Showcase() {
         <Shot src="loja/cardapio-mobile" w={390} h={844} sizes="180px" alt="Cardápio da loja aberto no celular do cliente" />
       </div>
     </Tabs.Root>
+  );
+}
+
+/**
+ * Vídeo da campanha (1 min, telas reais do sistema). Não toca sozinho e só baixa ao clicar (preload="none"),
+ * para não pesar a primeira carga da página. Arquivo em public/video (origem: _brandkit, campanha 60 s 1920x1080).
+ */
+function VideoTour() {
+  return (
+    <section id="video" className="scroll-mt-20 bg-cz-navy pb-20 text-[#faf8f5]" aria-labelledby="video-titulo">
+      <div className="mx-auto max-w-5xl px-4">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-cz-gold">Veja em 1 minuto</p>
+          <h2 id="video-titulo" className="cz-heading mt-2 text-3xl font-bold sm:text-4xl">
+            Do pedido no celular ao balcão e à cozinha
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-[#c5cbd5]">Telas reais do sistema, na loja de demonstração Café e Flor: cardápio, carrinho, painel de pedidos, cozinha e PDV.</p>
+        </div>
+        <div className="mt-8 overflow-hidden rounded-[18px] border border-white/15 bg-[#08162d] shadow-2xl">
+          <video
+            controls
+            playsInline
+            preload="none"
+            poster="/video/comandazero-em-1-minuto-capa.webp"
+            width={1920}
+            height={1080}
+            className="aspect-video h-auto w-full"
+            aria-label="Vídeo de 1 minuto mostrando o ComandaZero em uma cafeteria"
+          >
+            <source src="/video/comandazero-em-1-minuto.mp4" type="video/mp4" />
+            Seu navegador não reproduz vídeo. <a href="/video/comandazero-em-1-minuto.mp4">Baixe o vídeo</a>.
+          </video>
+        </div>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link href={SIGNUP} className="inline-flex min-h-12 items-center gap-2 rounded-[10px] bg-cz-gold px-6 font-semibold text-cz-navy hover:brightness-105">
+            Testar {TRIAL_DAYS} dias grátis <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 

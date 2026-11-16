@@ -61,3 +61,29 @@ test.describe("Landing", () => {
     await expect(page.getByRole("img", { name: /Tela da cozinha/ })).toBeVisible();
   });
 });
+
+test.describe("Vídeo da landing", () => {
+  test("vídeo de 1 minuto com capa, controles e sem baixar antes do clique", async ({ page, request }) => {
+    await page.goto("/");
+    const video = page.locator("#video video");
+    await expect(video).toHaveAttribute("poster", "/video/comandazero-em-1-minuto-capa.webp");
+    await expect(video).toHaveAttribute("preload", "none");
+    expect(await video.evaluate((v: HTMLVideoElement) => v.controls && !v.autoplay)).toBe(true);
+    // Atalho no topo leva até o vídeo.
+    await page.getByRole("link", { name: "Assistir em 1 minuto" }).click();
+    await expect(page).toHaveURL(/#video$/);
+    // Arquivo servido com suporte a intervalo (avançar e voltar no vídeo).
+    const head = await request.get("/video/comandazero-em-1-minuto.mp4", { headers: { range: "bytes=0-1023" } });
+    expect([200, 206]).toContain(head.status());
+    expect(head.headers()["content-type"]).toContain("video/mp4");
+    const poster = await request.get("/video/comandazero-em-1-minuto-capa.webp");
+    expect(poster.status()).toBe(200);
+  });
+
+  test("vídeo toca e chega a 1 minuto de duração", async ({ page }) => {
+    await page.goto("/#video");
+    const video = page.locator("#video video");
+    const d = await video.evaluate((v: HTMLVideoElement) => new Promise<number>((res) => { v.muted = true; v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.load(); }));
+    expect(Math.round(d)).toBe(60);
+  });
+});
