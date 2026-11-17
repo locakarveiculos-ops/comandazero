@@ -21,6 +21,20 @@ const clean = (v: string, max: number) =>
     .slice(0, max)
     .trim();
 
+/** Chave Pix aceita pelo BCB: CPF, CNPJ, e-mail, celular (+55) ou chave aleatória. Devolve a chave normalizada ou null. */
+export function normalizePixKey(raw: string): string | null {
+  const v = raw.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return v.toLowerCase();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return v.toLowerCase().slice(0, 77);
+  const d = v.replace(/\D/g, "");
+  if (/^\+?55/.test(v) || /^\(?\d{2}\)?\s?9\d{4}-?\d{4}$/.test(v)) {
+    const local = d.replace(/^55(?=\d{10,11}$)/, "");
+    if (/^\d{10,11}$/.test(local)) return `+55${local}`;
+  }
+  if (d.length === 11 || d.length === 14) return d;
+  return null;
+}
+
 export function buildPixPayload(opts: { key: string; name: string; city: string; amount?: number; txid?: string; description?: string }) {
   const gui = field("00", "br.gov.bcb.pix");
   const key = field("01", opts.key);

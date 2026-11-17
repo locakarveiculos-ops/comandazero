@@ -23,6 +23,8 @@ import { useRemoteIntegrations } from "@/lib/repositories/remote";
 import { usePanelAccess } from "../panel-shell";
 import { hasFeature } from "@/lib/plans";
 import type { GatewayId, IntegrationSettings, Order, WhatsappTrigger } from "@/lib/types";
+import { normalizePixKey } from "@/lib/pix";
+import { markStep } from "@/lib/training/progress";
 import { cn, formatPhone, isValidBrPhone, money, round2, toWhatsappNumber } from "@/lib/utils";
 
 const TRIGGERS: { id: WhatsappTrigger; label: string }[] = [
@@ -53,7 +55,7 @@ export default function IntegracoesPage() {
     <div className="grid min-w-0 gap-5">
       <div>
         <h1 className="cz-heading text-2xl font-bold">Integrações</h1>
-        <p className="text-sm text-cz-muted">WhatsApp com botões e listas, gateways de pagamento e e-mail transacional, com testador de payload ao vivo.</p>
+        <p className="text-sm text-cz-muted">Como você recebe (Pix, dinheiro e cartão), avisos automáticos no WhatsApp e e-mail para o cliente.</p>
       </div>
       <Tabs.Root defaultValue="whatsapp" className="grid min-w-0 gap-5">
         <Tabs.List className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Integrações" data-tour="integ-abas">
@@ -295,9 +297,12 @@ function PaymentsTab({ settings, set }: TabProps) {
   const setCfg = (patch: Partial<typeof cfg>) => set((s) => ({ ...s, payments: { ...s.payments, gateways: { ...s.payments.gateways, [gw]: { ...cfg, ...patch } } } }));
 
   return (
+    <div className="grid gap-4">
+    <SimplePayments settings={settings} set={set} slug={tenant.slug} />
     <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
       <Card className="grid min-w-0 content-start gap-3">
-        <h2 className="font-bold">Gateways da loja</h2>
+        <h2 className="font-bold">Conexão Automática (avançado)</h2>
+        <p className="text-sm text-cz-muted">Opcional: liga o Pix e o cartão online a um banco ou maquininha para o pedido ser marcado como pago sozinho.</p>
         <ul className="grid gap-2">
           {ids.map((id) => {
             const c = settings.payments.gateways[id];
@@ -366,13 +371,56 @@ function PaymentsTab({ settings, set }: TabProps) {
           1. Cobrança · {req.method} {req.url}
         </p>
         <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-64 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ headers: req.headers, body: req.body }, null, 2)}</pre>
-        <p className="text-xs font-semibold text-cz-muted">2. Webhook de confirmação recebido em {input.webhookUrl}</p>
+        <p className="text-xs font-semibold text-cz-muted">2. Aviso de pagamento confirmado (webhook) recebido em {input.webhookUrl}</p>
         <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-48 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#9cc3f0]">{JSON.stringify(hook, null, 2)}</pre>
         <p className="rounded-xl bg-cz-success/10 p-3 text-sm text-cz-success">
           3. Normalizado: pedido <b>{parsed?.chargeId}</b> → <b>{parsed?.status === "paid" ? "PAGO" : parsed?.status}</b> · {money(amount)}
         </p>
       </Card>
     </div>
+    </div>
+  );
+}
+
+/** Recebimento simples (sem API): Pix na chave da loja, dinheiro com troco e cartão na maquininha. */
+function SimplePayments({ settings, set, slug }: TabProps & { slug: string }) {
+  const [key, setKey] = useState(settings.payments.pixKey ?? "");
+  const [holder, setHolder] = useState(settings.payments.pixName ?? "");
+  const presencial = settings.payments.gateways.presencial;
+  const save = () => {
+    const k = key.trim() ? normalizePixKey(key) : "";
+    if (k === null) return toast.error("Chave Pix inválida. Use CPF, CNPJ, e-mail, celular ou chave aleatória.");
+    if (k && holder.trim().length < 2) return toast.error("Informe o nome de quem recebe o Pix.");
+    set((s) => ({ ...s, payments: { ...s.payments, pixKey: k || undefined, pixName: k ? holder.trim() : undefined } }));
+    markStep(slug, "pix");
+    toast.success(k ? "Pix salvo. O cliente já paga na sua chave." : "Recebimento salvo.");
+  };
+  return (
+    <Card className="grid gap-4" data-tour="receber-simples">
+      <div>
+        <h2 className="font-bold">Como você recebe</h2>
+        <p className="text-sm text-cz-muted">Sem configuração técnica. O dinheiro cai direto na sua conta.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <Field label="Chave Pix" id="pix-key" hint="CPF, CNPJ, e-mail, celular ou chave aleatória">
+          <Input id="pix-key" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} />
+        </Field>
+        <Field label="Nome de quem recebe" id="pix-name" hint="O cliente confere antes de pagar">
+          <Input id="pix-name" autoComplete="name" value={holder} onChange={(e) => setHolder(e.target.value)} />
+        </Field>
+        <Button variant="brand" onClick={save}>
+          Salvar
+        </Button>
+      </div>
+      <label className="flex min-h-11 items-center justify-between gap-3 rounded-[10px] bg-cz-surface-2 px-3 text-sm font-semibold">
+        Dinheiro (com troco) e cartão na maquininha
+        <Switch
+          checked={presencial.enabled}
+          onCheckedChange={(v) => (set((s) => ({ ...s, payments: { ...s.payments, gateways: { ...s.payments.gateways, presencial: { ...presencial, enabled: v } } } })), markStep(slug, "pix"))}
+          label="Aceitar dinheiro e cartão na maquininha"
+        />
+      </label>
+    </Card>
   );
 }
 

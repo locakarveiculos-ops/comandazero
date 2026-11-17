@@ -175,6 +175,27 @@ export async function remoteSaveProduct(tenantId: string, p: Product) {
   refreshRemoteMenu();
 }
 
+/**
+ * Cardápio inicial do nicho na loja real: cria cada categoria (save_category) e salva cada produto com os
+ * complementos (save_product, transacional por produto). Dono/gerente conferido nas próprias funções.
+ */
+export async function remoteSeedMenu(tenantId: string, menu: { categories: Category[]; products: Product[] }) {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase indisponível");
+  const ids = new Map<string, string>();
+  for (const c of menu.categories) {
+    const { data, error } = await sb.rpc("save_category", { p_tenant: tenantId, p_id: null, p_name: c.name, p_icon: c.icon });
+    if (error) throw new Error(friendly(error.message));
+    ids.set(c.id, data as string);
+  }
+  for (const p of menu.products) {
+    const { error } = await sb.rpc("save_product", { p_tenant: tenantId, p: { ...p, id: null, categoryId: ids.get(p.categoryId) } });
+    if (error) throw new Error(friendly(error.message));
+  }
+  refreshRemoteMenu();
+  return ids;
+}
+
 /** Marca da loja real (nome, frase, logo, capa, cores, endereço) direto no banco. Dono/gerente pela RLS. */
 export async function remoteUpdateBrand(tenantId: string, b: { name: string; tagline: string; logo: string; cover: string; theme: unknown; subdomain: string }) {
   const sb = getSupabase();

@@ -285,9 +285,7 @@ async function main() {
       await p.getByLabel("Cidade").fill("Indaiatuba");
       await save(p, "super-admin/onboarding", "/onboarding", "passo 1 do assistente", "desktop");
       await p.getByRole("button", { name: "Continuar" }).click();
-      await p.getByRole("button", { name: "Continuar" }).click();
-      await p.getByRole("button", { name: "Continuar" }).click();
-      await save(p, "onboarding/aparencia", "/onboarding", "passo 4 com prévia de cores", "desktop");
+      await save(p, "onboarding/aparencia", "/onboarding", "passo 2 com prévia de cores", "desktop");
       await c.close();
     });
     await step("equipe-assinatura", async () => {

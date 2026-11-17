@@ -11,6 +11,7 @@ import { markArticle, useProgress } from "@/lib/training/progress";
 import { CHECKLIST, TOURS } from "@/lib/training/tours";
 import type { Article, Persona } from "@/lib/training/types";
 import { cn } from "@/lib/utils";
+import { isStepDone } from "./activation-checklist";
 import { runTour } from "./tour-runner";
 
 const PERSONA_LABEL: Record<Persona, string> = {
@@ -73,7 +74,7 @@ export function TrainingCenter({ slug }: { slug: string }) {
         <h2 className="font-semibold">Primeiros passos da loja</h2>
         <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {CHECKLIST.map((c) => {
-            const ok = c.articleId ? progress.articles[c.articleId]?.done : false;
+            const ok = isStepDone(c.id, progress, { products: 0 });
             return (
               <li key={c.id}>
                 <Link href={resolve(c.route, slug)} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-cz-border px-3 py-2 text-sm hover:bg-cz-surface-2">

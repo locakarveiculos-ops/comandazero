@@ -13,6 +13,7 @@ import { dataUrlToFile, fileToDataUrl } from "@/lib/image";
 import { updateTenant } from "@/lib/repositories";
 import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
 import { remoteUpdateBrand, remoteUploadImage } from "@/lib/repositories/remote";
+import { markStep } from "@/lib/training/progress";
 import type { Tenant } from "@/lib/types";
 import { cn, contrastRatio, money, readableInk, slugify } from "@/lib/utils";
 
@@ -61,12 +62,14 @@ function Editor({ tenant }: { tenant: Tenant }) {
     if (contrast < 4.5 || bodyContrast < 4.5) return toast.error("Ajuste as cores: o contraste mínimo é 4,5:1 para leitura (WCAG AA).");
     if (!remote) {
       updateTenant(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
+      markStep(tenant.slug, "marca");
       return void toast.success("Marca do app atualizada no cardápio e no PWA");
     }
     if (draft.logo.startsWith("data:") || draft.cover.startsWith("data:")) return toast.error("Aguarde o envio da imagem terminar.");
     setSaving(true);
     try {
       await remoteUpdateBrand(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
+      markStep(tenant.slug, "marca");
       toast.success("Marca publicada no cardápio e no app");
       // Painel e vitrine leem a loja no servidor: recarrega os dados da página.
       router.refresh();

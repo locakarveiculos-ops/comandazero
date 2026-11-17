@@ -291,12 +291,13 @@ test.describe("Retaguarda", () => {
     await page.getByLabel("Endereço do cardápio").fill(slug);
     await page.getByLabel("WhatsApp da loja").fill("19999990000");
     await page.getByLabel("Cidade").fill("Indaiatuba");
+    await page.getByRole("radio", { name: /Padaria/ }).click();
     for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Continuar" }).click();
     await page.getByRole("button", { name: "Criar loja" }).click();
     await page.waitForURL(`**/painel/${slug}?bemvindo=1`, { timeout: 20000 });
     await page.goto(`/loja/${slug}`);
     await expect(page.getByRole("heading", { level: 1, name: "Padaria Pão Dourado" })).toBeVisible();
-    await expect(page.getByText("Cappuccino Artesanal").first()).toBeVisible();
+    await expect(page.getByText("Pão Francês").first()).toBeVisible();
 
     // Limpeza: apaga a loja de teste (cascata em cardápio, mesas, membros e assinatura).
     const headers = { apikey: adminEnv.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${adminEnv.SUPABASE_SERVICE_ROLE_KEY}` };

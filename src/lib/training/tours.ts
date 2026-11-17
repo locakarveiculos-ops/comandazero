@@ -11,7 +11,8 @@ export const TOURS: Tour[] = [
     route: "/painel/{slug}",
     steps: [
       { title: "Bem-vindo ao ComandaZero", text: "Em 1 minuto você vê onde fica cada coisa. Use as setas ou Tab para avançar e Esc para sair." },
-      { anchor: "menu-lateral", side: "right", title: "Menu do painel", text: "Pedidos, PDV, mesas, cozinha, cardápio, fidelidade, marca do app e integrações. O número laranja em Pedidos mostra pedidos ainda não vistos." },
+      { anchor: "menu-lateral", side: "right", title: "Menu do painel", text: "Pedidos, Frente de Caixa (onde você cobra no balcão), Tela da Cozinha (onde a cozinha vê o que preparar), cardápio e marca do app. O número laranja em Pedidos mostra pedidos ainda não vistos." },
+      { anchor: "ativacao", side: "bottom", title: "Sua loja pronta em poucos passos", text: "Esta lista mostra o que falta para vender. Comece pelo pedido de teste: ele não vai para o faturamento." },
       { anchor: "dash-kpis", side: "bottom", title: "Números de hoje", text: "Faturamento, quantidade de pedidos, ticket médio e o que está em andamento agora." },
       { anchor: "som", side: "bottom", title: "Alerta sonoro", text: "Deixe ligado no computador do balcão: cada pedido novo toca um aviso. O navegador só libera o som depois do primeiro clique na página." },
       { title: "Pronto!", text: "Na Central de treinamento há um guia com prints para cada tela. Você pode refazer este tour pelo botão Ajuda a qualquer momento." },
@@ -32,7 +33,7 @@ export const TOURS: Tour[] = [
   {
     id: "pdv-venda",
     version: 1,
-    title: "Venda rápida no balcão",
+    title: "Venda rápida na Frente de Caixa",
     persona: "caixa",
     route: "/painel/{slug}/pdv",
     steps: [
@@ -62,7 +63,7 @@ export const TOURS: Tour[] = [
     persona: "cozinha",
     route: "/painel/{slug}/kds",
     steps: [
-      { anchor: "kds-recebido", side: "right", title: "Fila", text: "Pedidos novos entram aqui, do mais antigo para o mais novo. Observações aparecem em destaque amarelo." },
+      { anchor: "kds-recebido", side: "right", title: "Fila", text: "Pedidos novos entram aqui, do mais antigo para o mais novo. Observações aparecem em amarelo e o que é para tirar (ex.: Sem cebola) em vermelho." },
       { anchor: "kds-preparo", side: "bottom", title: "Preparando", text: "Toque em Começar para trazer o pedido para cá. O cliente vê que o pedido está na cozinha." },
       { anchor: "kds-pronto", side: "left", title: "Pronto", text: "Pedido pronto para retirar ou entregar. A seta de voltar desfaz um toque errado." },
       { anchor: "kds-legenda", side: "bottom", title: "Cores do tempo", text: "Verde até 10 min, amarelo até 20 e vermelho acima. O tempo também aparece escrito no cartão." },
@@ -87,7 +88,7 @@ export const TOURS: Tour[] = [
     persona: "atendente",
     route: "/painel/{slug}/integracoes",
     steps: [
-      { anchor: "integ-abas", side: "bottom", title: "Integrações", text: "WhatsApp, pagamentos e e-mail ficam em abas separadas." },
+      { anchor: "integ-abas", side: "bottom", title: "Pagamentos e WhatsApp", text: "WhatsApp, formas de receber e e-mail ficam em abas separadas. Em Pagamentos, a chave Pix basta para começar." },
       { title: "Conectar o WhatsApp", text: "Informe o código de ativação recebido da plataforma e leia o QR com o celular da loja (Aparelhos conectados). Nenhum token aparece na tela." },
       { title: "Testador de mensagens", text: "Veja como o cliente recebe os botões e listas antes de ativar os avisos automáticos." },
     ],
@@ -107,14 +108,17 @@ export const TOURS: Tour[] = [
   },
 ];
 
+// Ativação da loja (widget "Sua loja está X% pronta"). Cada tela marca o próprio passo ao ser concluído
+// (markStep); ler o artigo indicado também conta. Ordem = ordem sugerida para o lojista.
 export const CHECKLIST: ChecklistItem[] = [
-  { id: "marca", title: "Personalizar logo e cores do app", route: "/painel/{slug}/aparencia", roles: ["proprietario"], articleId: "aparencia-marca" },
-  { id: "cardapio", title: "Revisar o cardápio e os preços", route: "/painel/{slug}/cardapio", roles: ["proprietario"], articleId: "cardapio-produto" },
-  { id: "whatsapp", title: "Conectar o WhatsApp da loja", route: "/painel/{slug}/integracoes", roles: ["proprietario", "atendente"], articleId: "integracoes-whatsapp" },
+  { id: "cardapio", title: "Ter produtos no cardápio", route: "/painel/{slug}/cardapio", roles: ["proprietario"], articleId: "cardapio-produto" },
+  { id: "marca", title: "Colocar logo e cores do app", route: "/painel/{slug}/aparencia", roles: ["proprietario"], articleId: "aparencia-marca" },
+  { id: "pix", title: "Configurar como receber (Pix, dinheiro, cartão)", route: "/painel/{slug}/integracoes", roles: ["proprietario"] },
+  { id: "pedido-teste", title: "Fazer o pedido de teste até a Tela da Cozinha", route: "/painel/{slug}/kds", roles: ["proprietario", "cozinha"], articleId: "kds-fluxo" },
+  { id: "pdv", title: "Treinar uma venda na Frente de Caixa", route: "/painel/{slug}/pdv", roles: ["proprietario", "caixa"], articleId: "pdv-venda" },
   { id: "mesas", title: "Imprimir os QR Codes das mesas", route: "/painel/{slug}/mesas", roles: ["proprietario", "garcom"], articleId: "mesas-qr" },
-  { id: "primeiro-pedido", title: "Fazer um pedido de teste no cardápio", route: "/loja/{slug}", roles: ["proprietario", "caixa"], articleId: "cliente-pedido" },
-  { id: "kds", title: "Abrir o KDS no monitor da cozinha", route: "/painel/{slug}/kds", roles: ["proprietario", "cozinha"], articleId: "kds-fluxo" },
-  { id: "pdv", title: "Fazer uma venda no PDV", route: "/painel/{slug}/pdv", roles: ["proprietario", "caixa"], articleId: "pdv-venda" },
+  { id: "whatsapp", title: "Conectar o WhatsApp da loja", route: "/painel/{slug}/integracoes", roles: ["proprietario", "atendente"], articleId: "integracoes-whatsapp" },
+  { id: "link", title: "Copiar o link do cardápio e divulgar", route: "/loja/{slug}", roles: ["proprietario"] },
 ];
 
 export const tourById = (id: string) => TOURS.find((t) => t.id === id);

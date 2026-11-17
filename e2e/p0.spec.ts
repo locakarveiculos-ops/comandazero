@@ -66,7 +66,7 @@ test.describe("P0 · proteção de rotas", () => {
   test("caixa vê PDV mas não Cardápio (menu e servidor)", async ({ browser }) => {
     const { ctx, page } = await login(browser, "CASHIER");
     await page.waitForURL(`**/painel/${SLUG}`);
-    await expect(page.getByRole("link", { name: "PDV Balcão" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Frente de Caixa (PDV)" })).toBeVisible();
     await expect(page.locator(`a[href="/painel/${SLUG}/cardapio"]`)).toHaveCount(0);
     expect((await page.goto(`/painel/${SLUG}/cardapio`))?.status()).toBe(403);
     expect((await page.goto(`/painel/${SLUG}/pdv`))?.status()).toBe(200);
@@ -102,7 +102,7 @@ test.describe("P0 · pedido real entre aparelhos", () => {
   test("pedido do celular chega no KDS do tablet em menos de 3 s, rastreio por token em outro aparelho", async ({ browser }) => {
     const kds = await login(browser, "OWNER", `/painel/${SLUG}/kds`);
     await kds.page.waitForURL(`**/painel/${SLUG}/kds`);
-    await expect(kds.page.getByText("KDS ·")).toBeVisible();
+    await expect(kds.page.getByText("Tela da Cozinha (KDS) ·")).toBeVisible();
     // O KDS mostra "Ao vivo" quando o canal Realtime está inscrito.
     await expect(kds.page.getByTestId("conexao")).toHaveText(/Ao vivo/, { timeout: 15000 });
 

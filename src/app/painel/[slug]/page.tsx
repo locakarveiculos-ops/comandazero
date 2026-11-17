@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useHydrated } from "@/components/providers";
+import { ActivationCard } from "@/components/training/activation-checklist";
 import { Card, Skeleton } from "@/components/ui";
 import { useStoreOrders } from "@/lib/repositories/engine";
 import type { Channel } from "@/lib/types";
@@ -16,7 +17,7 @@ import { money, round2 } from "@/lib/utils";
 const CHANNEL: Record<Channel, { label: string; color: string }> = {
   loja: { label: "App / cardápio", color: "#2563eb" },
   mesa: { label: "Mesa (QR)", color: "#16a34a" },
-  balcao: { label: "Balcão (PDV)", color: "#9333ea" },
+  balcao: { label: "Frente de Caixa (PDV)", color: "#9333ea" },
   delivery: { label: "Delivery", color: "#ea580c" },
   whatsapp: { label: "WhatsApp", color: "#0d9488" },
 };
@@ -84,17 +85,19 @@ export default function Dashboard() {
           <p className="text-sm text-cz-muted">Resumo de hoje e dos últimos 7 dias.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/painel/${slug}/pdv`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-brand-ink">
-            <MonitorSmartphone className="size-4" aria-hidden /> Abrir PDV
+          <Link href={`/painel/${slug}/pdv`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-brand-ink transition hover:opacity-90">
+            <MonitorSmartphone className="size-4" aria-hidden /> Frente de Caixa (PDV)
           </Link>
-          <Link href={`/painel/${slug}/kds`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cz-surface px-4 text-sm font-semibold ring-1 ring-cz-border">
-            <ChefHat className="size-4" aria-hidden /> KDS
+          <Link href={`/painel/${slug}/kds`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cz-surface px-4 text-sm font-semibold ring-1 ring-cz-border transition hover:bg-cz-surface-2">
+            <ChefHat className="size-4" aria-hidden /> Tela da Cozinha (KDS)
           </Link>
-          <Link href={`/loja/${slug}`} target="_blank" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cz-surface px-4 text-sm font-semibold ring-1 ring-cz-border">
+          <Link href={`/loja/${slug}`} target="_blank" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cz-surface px-4 text-sm font-semibold ring-1 ring-cz-border transition hover:bg-cz-surface-2">
             Cardápio <ExternalLink className="size-3.5" aria-hidden />
           </Link>
         </div>
       </div>
+
+      <ActivationCard tenant={tenant} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-tour="dash-kpis">
         <Kpi icon={TrendingUp} label="Faturamento hoje" value={money(data.revenue)} />
@@ -150,6 +153,7 @@ export default function Dashboard() {
               <span className="w-24 text-right font-semibold tabular-nums">{money(t.value)}</span>
             </li>
           ))}
+          {!data.top.length && <li className="text-sm text-cz-muted">Os produtos mais vendidos da semana aparecem aqui depois das primeiras vendas.</li>}
         </ol>
       </Card>
     </div>

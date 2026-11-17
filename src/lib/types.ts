@@ -197,6 +197,9 @@ export type IntegrationSettings = {
     cardGateway: GatewayId;
     gateways: Record<GatewayId, { enabled: boolean; mode: "sandbox" | "producao"; keyRef: string; split: boolean }>;
     acceptVR: string[];
+    /** Pix com chave própria (sem Conexão Automática): chave e nome de quem recebe. */
+    pixKey?: string;
+    pixName?: string;
   };
   email: { enabled: boolean; fromName: string; subdomain: string; verified: boolean; ownerEmail: string };
 };

@@ -193,7 +193,8 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
             customer: { name, phone: order.customer.phone },
             webhookUrl: `${window.location.origin}/api/webhooks/pagamentos/${gateway}`,
           },
-          { pixKey: `${tenant.slug}@pix.demo.comandazero`, merchant: tenant.name, city: tenant.address.city },
+          // Chave própria da loja (configurada no onboarding/Integrações); sem ela, chave fictícia da demonstração.
+          { pixKey: settings?.payments.pixKey || `${tenant.slug}@pix.demo.comandazero`, merchant: settings?.payments.pixName || tenant.name, city: tenant.address.city },
         ),
       );
       return;

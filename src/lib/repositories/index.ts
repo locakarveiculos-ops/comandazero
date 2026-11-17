@@ -86,6 +86,16 @@ export function deleteProduct(id: string) {
   mutate((s) => ({ products: s.products.filter((p) => p.id !== id) }));
 }
 
+/** Acrescenta o cardápio inicial do nicho (categorias + produtos com complementos) à loja do navegador. */
+export function seedNicheMenu(tenantId: string, menu: { categories: ReturnType<typeof useDb.getState>["categories"]; products: Product[] }) {
+  mutate((s) => ({ categories: [...s.categories, ...menu.categories], products: [...s.products, ...menu.products] }));
+}
+
+/** Cria as mesas que faltam (loja sem mapa de mesas no navegador). */
+export function ensureTables(tenant: Tenant, count = 10) {
+  mutate((s) => (s.tables.some((t) => t.tenantId === tenant.id) ? {} : { tables: [...s.tables, ...defaultTables({ ...tenant, tables: count })] }));
+}
+
 export function addCategory(tenantId: string, name: string) {
   mutate((s) => {
     const order = Math.max(0, ...s.categories.filter((c) => c.tenantId === tenantId).map((c) => c.order)) + 1;

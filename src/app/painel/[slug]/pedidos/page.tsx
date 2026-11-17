@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, ChefHat, MessageCircle, PackageCheck, X } from "lucide-react";
+import { Check, ChefHat, FlaskConical, MessageCircle, PackageCheck, X } from "lucide-react";
+import { useTestOrder } from "@/components/training/activation-checklist";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
@@ -58,8 +59,19 @@ export default function PedidosPage() {
       </div>
 
       {list.length === 0 ? (
-        <Empty icon={<ChefHat className="size-8 text-cz-muted" aria-hidden />} title="Nenhum pedido em andamento">
-          Abra o cardápio em outra aba e faça um pedido: ele aparece aqui na hora, com som.
+        <Empty
+          icon={<ChefHat className="size-7 text-cz-muted" aria-hidden />}
+          title="Nenhum pedido em andamento"
+          action={
+            <>
+              <TestOrderAction tenant={tenant} />
+              <a href={`/loja/${tenant.slug}`} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-[10px] border border-cz-border px-4 text-sm font-semibold hover:bg-cz-surface-2">
+                Abrir meu cardápio
+              </a>
+            </>
+          }
+        >
+          Todo pedido do cardápio, das mesas e da Frente de Caixa aparece aqui na hora, com som. Faça um pedido de teste para ver.
         </Empty>
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2" aria-live="polite">
@@ -119,6 +131,15 @@ export default function PedidosPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+function TestOrderAction({ tenant }: { tenant: Tenant }) {
+  const test = useTestOrder(tenant);
+  return (
+    <Button variant="brand" onClick={test.run} loading={test.busy}>
+      <FlaskConical className="size-4" aria-hidden /> Fazer pedido de teste
+    </Button>
   );
 }
 

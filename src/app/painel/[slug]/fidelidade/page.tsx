@@ -114,7 +114,16 @@ export default function FidelidadePage() {
                 </li>
               );
             })}
-            {!cards.length && <li className="py-6 text-center text-sm text-cz-muted">Os clientes entram sozinhos ao pedir com WhatsApp.</li>}
+            {!cards.length && (
+              <li className="grid justify-items-center gap-3 py-6 text-center text-sm text-cz-muted">
+                {l.enabled ? "Os clientes entram sozinhos ao pedir informando o WhatsApp. Cada compra vira selo." : "O cartão está desligado. Ligue para premiar quem volta."}
+                {!l.enabled && (
+                  <Button variant="brand" size="sm" onClick={() => setL({ enabled: true, reward: l.reward || "1 item grátis", categoryIds: l.categoryIds.length ? l.categoryIds : categories.slice(0, 1).map((c) => c.id) })}>
+                    <Gift className="size-4" aria-hidden /> Ligar cartão fidelidade
+                  </Button>
+                )}
+              </li>
+            )}
           </ul>
         </Card>
       </div>
@@ -170,6 +179,7 @@ export default function FidelidadePage() {
               </div>
             </li>
           ))}
+          {!coupons.length && <li className="text-sm text-cz-muted sm:col-span-2 xl:col-span-3">Nenhum cupom ainda. Crie um acima (ex.: PRIMEIRACOMPRA com 10%) e divulgue no Instagram.</li>}
         </ul>
       </Card>
     </div>
