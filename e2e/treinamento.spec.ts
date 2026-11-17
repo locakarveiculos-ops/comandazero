@@ -99,7 +99,41 @@ test.describe("Central de treinamento e tours", () => {
     await page.goto("/painel/cafe-e-flor?tour=painel-visao-geral");
     const pop = page.locator(".driver-popover");
     await expect(pop).toBeVisible();
-    // O menu lateral não existe no celular: o tour tem 4 passos em vez de 5.
-    await expect(pop).toContainText("1 de 4");
+    // O menu lateral não existe no celular: o tour tem 5 passos em vez de 6.
+    await expect(pop).toContainText("1 de 5");
+  });
+
+  test("ativação: pedido de teste vai da Cozinha à Frente de Caixa em modo treino", async ({ page }) => {
+    await page.goto("/painel/cafe-e-flor/kds");
+    await page.getByRole("button", { name: "Fazer pedido de teste" }).click();
+    const guide = page.getByRole("status").filter({ hasText: "Passo" });
+    await expect(guide).toContainText("Passo 1 de 3");
+    const ticket = page.getByRole("main").locator("li", { hasText: "Teste" }).first();
+    await ticket.getByRole("button", { name: "Começar" }).click();
+    await expect(guide).toContainText("Passo 2 de 3");
+    await page.getByRole("main").locator("li", { hasText: "Teste" }).first().getByRole("button", { name: "Pronto" }).click();
+    await page.getByRole("link", { name: /Treinar cobrança/ }).click();
+    await expect(page).toHaveURL(/\/pdv\?treino=1$/);
+    await expect(page.getByText("Modo treino: nada é registrado.")).toBeVisible();
+    await page.getByRole("button", { name: "Finalizar (F4)" }).click();
+    const pay = page.getByRole("dialog", { name: "Receber pagamento" });
+    await pay.getByRole("radio", { name: "Dinheiro" }).click();
+    await pay.getByRole("textbox").fill("100,00");
+    await expect(pay.getByText(/Troco:/)).toBeVisible();
+    await pay.getByRole("button", { name: "Concluir" }).click();
+    await expect(page.getByText(/Treino concluído/)).toBeVisible();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("cz-training:cafe-e-flor") || "{}"));
+    expect(saved.checklist["pedido-teste"]).toBe(true);
+    expect(saved.checklist.pdv).toBe(true);
+  });
+
+  test("ativação: botão do topo mostra o % e os passos", async ({ page }) => {
+    await page.goto("/painel/cafe-e-flor/pedidos");
+    await page.getByTestId("ativacao").click();
+    const panel = page.getByRole("dialog", { name: /pronta para vender/ });
+    await expect(panel.getByRole("progressbar")).toBeVisible();
+    await expect(panel).toContainText("Ter produtos no cardápio");
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
   });
 });

@@ -9,9 +9,10 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { ProductModal } from "@/components/loja/product-modal";
-import { Badge, Button, Modal, Select } from "@/components/ui";
-import { addToTable, closeTable, createOrder, openTable, removeTableItem, requestBill, transferTable, useMenu, useTables } from "@/lib/repositories";
+import { Badge, Button, Empty, Modal, Select } from "@/components/ui";
+import { addToTable, closeTable, createOrder, ensureTables, openTable, removeTableItem, requestBill, transferTable, useMenu, useTables } from "@/lib/repositories";
 import type { Product, TableTab, Tenant } from "@/lib/types";
+import { markStep } from "@/lib/training/progress";
 import { useMinute } from "@/lib/use-now";
 import { cartSubtotal, cn, elapsedMinutes, money, round2, uid } from "@/lib/utils";
 
@@ -46,6 +47,20 @@ export default function MesasPage() {
           <QrCode className="size-4" aria-hidden /> QR Codes das mesas
         </Button>
       </div>
+
+      {!tables.length && (
+        <Empty
+          icon={<QrCode className="size-7 text-cz-muted" aria-hidden />}
+          title="Nenhuma mesa cadastrada"
+          action={
+            <Button variant="brand" onClick={() => ensureTables(tenant)}>
+              <Plus className="size-4" aria-hidden /> Criar 10 mesas com QR Code
+            </Button>
+          }
+        >
+          Cada mesa ganha um QR Code: o cliente pede pelo celular e a conta fica separada por mesa.
+        </Empty>
+      )}
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" data-tour="mesas-mapa">
         {tables.map((t) => {
@@ -267,7 +282,7 @@ function QrSheet({ open, onOpenChange, tenant, tables }: { open: boolean; onOpen
   return (
     <Modal open={open} onOpenChange={onOpenChange} title="QR Codes das mesas" description="O cliente aponta a câmera e pede direto para a mesa." className="max-w-4xl">
       <div className="grid gap-4 p-5">
-        <Button variant="brand" onClick={() => window.print()}>
+        <Button variant="brand" onClick={() => (markStep(tenant.slug, "mesas"), window.print())}>
           <Printer className="size-4" aria-hidden /> Imprimir todos
         </Button>
         <ul className="print-area grid grid-cols-2 gap-4 bg-cz-surface sm:grid-cols-3">

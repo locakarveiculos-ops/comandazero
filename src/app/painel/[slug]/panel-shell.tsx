@@ -30,6 +30,7 @@ import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { useOrderAlerts, useRemoteOrderAlert } from "@/components/painel/use-panel";
 import { Skeleton } from "@/components/ui";
+import { ActivationButton } from "@/components/training/activation-checklist";
 import { HelpButton, WelcomeTour } from "@/components/training/help-button";
 import { TourFromQuery } from "@/components/training/training-center";
 import { useDb } from "@/lib/repositories";
@@ -42,16 +43,17 @@ import { cn } from "@/lib/utils";
 // Papéis que veem cada item (espelha PAGE_PERMISSION do servidor; o servidor é quem bloqueia de fato).
 const ALL: Role[] = ["owner", "manager", "cashier", "waiter", "kitchen"];
 // realOnly: telas que só existem para loja real (equipe e cobrança não fazem sentido na demonstração).
-const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolean; roles: Role[]; realOnly?: boolean }[] = [
+// mode: item só aparece se a loja atende nesse modo (sem mesas = menu mais simples para quem está começando).
+const NAV: { href: string; label: string; icon: typeof BarChart3; badge?: boolean; roles: Role[]; realOnly?: boolean; mode?: "mesa" }[] = [
   { href: "", label: "Dashboard", icon: BarChart3, roles: ALL },
   { href: "/pedidos", label: "Pedidos", icon: ListOrdered, badge: true, roles: ALL },
-  { href: "/pdv", label: "PDV Balcão", icon: MonitorSmartphone, roles: ["owner", "manager", "cashier"] },
-  { href: "/mesas", label: "Mesas", icon: UtensilsCrossed, roles: ["owner", "manager", "cashier", "waiter"] },
-  { href: "/kds", label: "KDS Cozinha", icon: ChefHat, roles: ALL },
+  { href: "/pdv", label: "Frente de Caixa (PDV)", icon: MonitorSmartphone, roles: ["owner", "manager", "cashier"] },
+  { href: "/mesas", label: "Mesas e comandas", icon: UtensilsCrossed, roles: ["owner", "manager", "cashier", "waiter"], mode: "mesa" },
+  { href: "/kds", label: "Tela da Cozinha (KDS)", icon: ChefHat, roles: ALL },
   { href: "/cardapio", label: "Cardápio", icon: LayoutGrid, roles: ["owner", "manager"] },
   { href: "/fidelidade", label: "Fidelidade & cupons", icon: Heart, roles: ["owner", "manager"] },
   { href: "/aparencia", label: "Marca do app", icon: Palette, roles: ["owner", "manager"] },
-  { href: "/integracoes", label: "Integrações", icon: Plug, roles: ["owner", "manager"] },
+  { href: "/integracoes", label: "Pagamentos e WhatsApp", icon: Plug, roles: ["owner", "manager"] },
   { href: "/equipe", label: "Equipe", icon: Users, roles: ["owner"], realOnly: true },
   { href: "/assinatura", label: "Assinatura", icon: Wallet, roles: ["owner"], realOnly: true },
   { href: "/treinamento", label: "Central de treinamento", icon: GraduationCap, roles: ALL },
@@ -121,7 +123,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
 
   const nav = (compact: boolean) => (
     <nav aria-label="Painel" className="grid gap-1">
-      {NAV.filter((n) => (access.isDemo ? !n.realOnly : !!access.role && n.roles.includes(access.role))).map((n) => {
+      {NAV.filter((n) => (access.isDemo ? !n.realOnly : !!access.role && n.roles.includes(access.role)) && (!n.mode || tenant.modes.includes(n.mode))).map((n) => {
         const href = base + n.href;
         const active = n.href ? path.startsWith(href) : path === base;
         return (
@@ -184,7 +186,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
 
       <div className="min-w-0">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-cz-border bg-cz-surface/90 px-4 py-2 backdrop-blur">
-          <button type="button" className="grid size-11 place-items-center rounded-[10px] hover:bg-cz-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Abrir menu" aria-expanded={open}>
+          <button type="button" className="grid size-11 shrink-0 place-items-center rounded-[10px] hover:bg-cz-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Abrir menu" aria-expanded={open}>
             <MenuIcon className="size-5" aria-hidden />
           </button>
           {/* Marca da loja que está sendo operada (white-label), não da plataforma. */}
@@ -213,6 +215,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
             {soundOn ? <Bell className="size-4" aria-hidden /> : <BellOff className="size-4" aria-hidden />}
             <span className="hidden sm:inline">Som {soundOn ? "ligado" : "desligado"}</span>
           </button>
+          {(access.isDemo || access.role === "owner" || access.role === "manager") && <ActivationButton tenant={tenant} />}
           <HelpButton slug={slug} />
           <ThemeToggle />
         </header>

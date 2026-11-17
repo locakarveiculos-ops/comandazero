@@ -13,14 +13,20 @@ import { toast } from "sonner";
 import type { Tenant } from "@/lib/types";
 import { mutate } from "@/lib/repositories/store";
 import type { Order, OrderStatus } from "@/lib/types";
+import { TestGuide, TestOrderButton } from "@/components/training/test-order";
+import { nicheById, nicheFromCategory } from "@/lib/niche-presets";
+import { TEST_CUSTOMER } from "@/lib/repositories/engine";
 import { useTick } from "@/lib/use-now";
 import { MODE_LABEL, cn, elapsedMinutes, fmtTime, waitLevel } from "@/lib/utils";
 
-const COLS: { status: OrderStatus; title: string; next?: OrderStatus; prev?: OrderStatus; action: string }[] = [
-  { status: "recebido", title: "Fila", next: "preparo", action: "Começar" },
-  { status: "preparo", title: "Preparando", next: "pronto", prev: "recebido", action: "Pronto" },
-  { status: "pronto", title: "Pronto para retirar / entregar", next: "entregue", prev: "preparo", action: "Entregue" },
+const COLS: { status: OrderStatus; title: string; next?: OrderStatus; prev?: OrderStatus; action: string; empty: string }[] = [
+  { status: "recebido", title: "Fila", next: "preparo", action: "Começar", empty: "Pedidos novos chegam aqui com alerta e som." },
+  { status: "preparo", title: "Preparando", next: "pronto", prev: "recebido", action: "Pronto", empty: "Nada no fogo agora." },
+  { status: "pronto", title: "Pronto para retirar / entregar", next: "entregue", prev: "preparo", action: "Entregue", empty: "Nenhum pedido esperando retirada." },
 ];
+
+// Remoção ("Sem cebola") vira faixa de alto contraste: é o erro mais caro de cozinha.
+const isRemoval = (name: string) => /^sem\b/i.test(name.trim());
 
 const LEVEL = {
   ok: "bg-[#16845b] text-white",
@@ -43,6 +49,7 @@ export default function KdsPage() {
   }, []);
 
   if (!tenant) return null;
+  const callNumber = !!nicheById(nicheFromCategory(tenant.category) ?? "")?.features.callNumber;
   const active = orders.filter((o) => ["recebido", "preparo", "pronto"].includes(o.status)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   const toggleFs = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}));
@@ -55,7 +62,7 @@ export default function KdsPage() {
         </Link>
         <span className="hidden sm:block"><BrandLogo variant="symbol" height={28} /></span>
         <h1 className="cz-heading flex-1 text-xl font-bold">
-          KDS · {tenant.name}
+          Tela da Cozinha (KDS) · {tenant.name}
         </h1>
         {isRemote(tenant) && (
           <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", live ? "text-[#4ade80]" : "text-[#fca5a5]")} data-testid="conexao" role="status">
@@ -77,6 +84,8 @@ export default function KdsPage() {
         </button>
       </header>
 
+      <TestGuide tenant={tenant} orders={orders} />
+
       <main id="conteudo" className="grid flex-1 gap-3 p-3 md:grid-cols-3">
         {COLS.map((col) => {
           const list = active.filter((o) => o.status === col.status);
@@ -87,9 +96,14 @@ export default function KdsPage() {
               </h2>
               <ul className="grid flex-1 content-start gap-3 overflow-y-auto p-3 pt-0" aria-live="polite">
                 {list.map((o) => (
-                  <Ticket key={o.id} order={o} now={now} col={col} tenant={tenant} />
+                  <Ticket key={o.id} order={o} now={now} col={col} tenant={tenant} callNumber={callNumber} />
                 ))}
-                {!list.length && <li className="rounded-[10px] border border-dashed border-[#354762] p-6 text-center text-sm text-[#c5cbd5]">Nada aqui</li>}
+                {!list.length && (
+                  <li className="grid justify-items-center gap-3 rounded-[10px] border border-dashed border-[#354762] p-6 text-center text-sm text-[#c5cbd5]">
+                    {col.empty}
+                    {col.status === "recebido" && !active.length && <TestOrderButton tenant={tenant} />}
+                  </li>
+                )}
               </ul>
             </section>
           );
@@ -99,14 +113,19 @@ export default function KdsPage() {
   );
 }
 
-function Ticket({ order, now, col, tenant }: { order: Order; now: number; col: (typeof COLS)[number]; tenant: Tenant }) {
+function Ticket({ order, now, col, tenant, callNumber }: { order: Order; now: number; col: (typeof COLS)[number]; tenant: Tenant; callNumber: boolean }) {
   const move = (status: OrderStatus) => void changeOrderStatus(tenant, order.id, status).catch((e: Error) => toast.error(e.message));
   const min = elapsedMinutes(order.createdAt, now);
   const level = waitLevel(min);
+  const isTest = order.customer.name === TEST_CUSTOMER;
   return (
-    <li className={cn("overflow-hidden rounded-[10px] bg-[#faf8f5] text-[#0b1f40]", !order.seen && "flash-new")}>
+    <li className={cn("overflow-hidden rounded-[10px] bg-[#faf8f5] text-[#0b1f40]", !order.seen && "flash-new", isTest && "ring-4 ring-[#d4af6b]")}>
       <div className={cn("flex items-center justify-between px-3 py-2 font-bold", LEVEL[level])}>
-        <span className="text-lg">#{order.number}</span>
+        <span className="text-lg">
+          {callNumber ? "Senha " : "#"}
+          {order.number}
+          {isTest && <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold uppercase text-[#0b1f40]">Teste</span>}
+        </span>
         <span className="tabular-nums" aria-label={`${min} minutos de espera`}>
           {min} min
         </span>
@@ -120,9 +139,23 @@ function Ticket({ order, now, col, tenant }: { order: Order; now: number; col: (
           {order.items.map((i) => (
             <li key={i.key} className="leading-snug">
               <span className="text-lg font-extrabold">{i.qty}×</span> <span className="font-semibold">{i.name}</span>
-              {i.options.length > 0 && <span className="block pl-6 text-sm text-[#526076]">{i.options.map((x) => x.name).join(" · ")}</span>}
+              {i.options.some((x) => !isRemoval(x.name)) && (
+                <span className="block pl-6 text-sm text-[#526076]">
+                  {i.options
+                    .filter((x) => !isRemoval(x.name))
+                    .map((x) => x.name)
+                    .join(" · ")}
+                </span>
+              )}
+              {i.options
+                .filter((x) => isRemoval(x.name))
+                .map((x) => (
+                  <span key={x.choiceId || x.name} className="mt-1 block rounded bg-[#b43838] px-2 py-1 text-sm font-extrabold uppercase tracking-wide text-white">
+                    ✕ {x.name}
+                  </span>
+                ))}
               {i.cake?.kg ? <span className="block pl-6 text-sm text-[#526076]">{i.cake.kg} kg · {i.cake.massa} · {i.cake.recheio} · {i.cake.cobertura}{i.cake.frase ? ` · “${i.cake.frase}”` : ""}</span> : null}
-              {i.notes && <span className="mt-0.5 block rounded bg-[#f8ecdc] px-2 py-0.5 text-sm font-semibold text-[#7d4710]">⚠ {i.notes}</span>}
+              {i.notes && <span className="mt-1 block rounded border-l-4 border-[#e0a43a] bg-[#fff1c2] px-2 py-1 text-sm font-bold text-[#4a2c00]">⚠ {i.notes}</span>}
             </li>
           ))}
         </ul>

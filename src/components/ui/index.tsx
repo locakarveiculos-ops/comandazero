@@ -183,12 +183,14 @@ export function Stepper({ value, onChange, min = 0, max = 99, label }: { value: 
   );
 }
 
-export function Empty({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
+/** Estado vazio acionável: 1 frase do para quê serve a tela + ação principal (nunca uma tela morta). */
+export function Empty({ icon, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="grid place-items-center gap-2 rounded-[14px] border border-dashed border-ui-border p-10 text-center">
-      {icon}
-      <p className="font-semibold">{title}</p>
-      {children && <div className="text-sm opacity-75">{children}</div>}
+    <div className="grid place-items-center gap-2 rounded-[14px] border border-dashed border-ui-border bg-ui-surface p-8 text-center sm:p-10">
+      {icon && <span className="grid size-14 place-items-center rounded-full bg-ui-surface-2">{icon}</span>}
+      <p className="text-lg font-bold">{title}</p>
+      {children && <div className="max-w-md text-sm text-ui-muted">{children}</div>}
+      {action && <div className="mt-2 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
   );
 }

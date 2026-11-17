@@ -39,7 +39,7 @@ export function HelpButton({ slug, variant = "saas", className }: { slug: string
         aria-label="Ajuda desta tela"
         data-testid="ajuda-tela"
         className={cn(
-          "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[10px] border px-3 text-sm font-semibold",
+          "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border px-3 text-sm font-semibold",
           variant === "saas" ? "border-cz-border bg-cz-surface hover:bg-cz-surface-2" : "border-line bg-surface text-ink",
           className,
         )}

@@ -1,17 +1,20 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- fotos podem vir de upload */
-import { Banknote, CreditCard, Divide, Minus, Plus, QrCode, Search, Ticket, Trash2, X } from "lucide-react";
+import { Banknote, CreditCard, Divide, FlaskConical, Minus, Plus, QrCode, Search, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { ProductModal } from "@/components/loja/product-modal";
 import { PrintButton } from "@/components/painel/receipt";
-import { Button, Modal } from "@/components/ui";
+import { Button, Empty, Modal } from "@/components/ui";
 import { changeDue, splitEvenly } from "@/lib/pricing";
 import { createOrder, markOrderPaid } from "@/lib/repositories";
-import { useStoreMenu } from "@/lib/repositories/engine";
+import { testItem, useStoreMenu } from "@/lib/repositories/engine";
+import { markStep } from "@/lib/training/progress";
+import { useClientValue } from "@/lib/use-client";
 import type { CartItem, Order, PaymentMethod, PaymentSplit, Product } from "@/lib/types";
 import { cartSubtotal, cn, money, round2, uid } from "@/lib/utils";
 
@@ -35,6 +38,16 @@ export default function PdvPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [last, setLast] = useState<Order | null>(null);
   const search = useRef<HTMLInputElement>(null);
+  // Modo treino (?treino=1): mesma tela, mas nada é registrado. Para o dono e funcionários novos aprenderem sem medo.
+  const urlTraining = useClientValue(() => new URLSearchParams(window.location.search).has("treino"), false);
+  const [trainingOff, setTrainingOff] = useState(false);
+  const training = urlTraining && !trainingOff;
+  const [seeded, setSeeded] = useState(false);
+  if (training && !seeded && products.length) {
+    setSeeded(true);
+    const it = testItem(products);
+    if (it) setItems([{ ...it, notes: "" }]);
+  }
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,6 +99,13 @@ export default function PdvPage() {
   };
 
   const finish = (payments: PaymentSplit[], change: number) => {
+    if (training) {
+      setItems([]);
+      setPayOpen(false);
+      markStep(tenant.slug, "pdv");
+      toast.success(`Treino concluído${change > 0 ? ` · troco ${money(change)}` : ""}. Nada foi registrado.`);
+      return;
+    }
     const order = createOrder({
       tenantId: tenant.id,
       channel: "balcao",
@@ -98,6 +118,7 @@ export default function PdvPage() {
       changeFor: change > 0 ? round2(total + change) : undefined,
     });
     markOrderPaid(order.id, payments);
+    markStep(tenant.slug, "pdv");
     setLast({ ...order, paymentStatus: "pago", payments });
     setItems([]);
     setPayOpen(false);
@@ -107,9 +128,20 @@ export default function PdvPage() {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_400px]">
+      {training && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-[14px] border-2 border-cz-gold bg-cz-surface p-4 xl:col-span-2">
+          <FlaskConical className="size-6 text-cz-gold-text" aria-hidden />
+          <p className="min-w-48 flex-1 text-sm">
+            <b>Modo treino: nada é registrado.</b> Toque em <b>Finalizar</b>, escolha <b>Dinheiro</b> e digite um valor maior para ver o troco. Em <b>Dividir conta por pessoa</b>, toque numa pessoa para lançar a parte dela.
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => (setTrainingOff(true), setItems([]))}>
+            Sair do treino
+          </Button>
+        </div>
+      )}
       <section className="grid min-w-0 content-start gap-3" aria-label="Produtos" data-tour="pdv-produtos">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="mr-auto cz-heading text-2xl font-bold">PDV Balcão</h1>
+          <h1 className="mr-auto cz-heading text-2xl font-bold">Frente de Caixa (PDV)</h1>
           <p className="text-xs text-cz-muted">
             <kbd className="rounded border border-cz-border bg-cz-surface px-1.5 font-mono">F2</kbd> buscar · <kbd className="rounded border border-cz-border bg-cz-surface px-1.5 font-mono">F4</kbd> finalizar · <kbd className="rounded border border-cz-border bg-cz-surface px-1.5 font-mono">Enter</kbd> lança código
           </p>
@@ -135,6 +167,11 @@ export default function PdvPage() {
             </button>
           ))}
         </div>
+        {!products.length && (
+          <Empty icon={<UtensilsCrossed className="size-7 text-cz-muted" aria-hidden />} title="Nenhum produto para vender ainda" action={<Link href={`/painel/${slug}/cardapio`} className="inline-flex min-h-12 items-center rounded-[10px] bg-brand px-5 font-semibold text-brand-ink">Carregar produtos de exemplo</Link>}>
+            A Frente de Caixa vende o que está no Cardápio. Carregue os exemplos do seu negócio com 1 clique.
+          </Empty>
+        )}
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 2xl:grid-cols-4">
           {list.map((p) => (
             <li key={p.id}>

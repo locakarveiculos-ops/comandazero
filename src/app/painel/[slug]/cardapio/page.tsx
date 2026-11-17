@@ -1,15 +1,16 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- fotos podem vir de upload */
-import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Pencil, Plus, Sparkles, Trash2, UtensilsCrossed } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
-import { Badge, Button, Card, Field, Input, Modal, Select, Switch, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Switch, Textarea } from "@/components/ui";
 import { fileToDataUrl } from "@/lib/image";
+import { NICHES, nicheById, nicheFromCategory, type NicheId } from "@/lib/niche-presets";
 import { addCategory, deleteProduct, saveProduct } from "@/lib/repositories";
-import { isRemote, setProductAvailable, useStoreMenu } from "@/lib/repositories/engine";
+import { isRemote, loadNicheMenu, setProductAvailable, useStoreMenu } from "@/lib/repositories/engine";
 import { remoteDeleteProduct, remoteSaveCategory, remoteSaveProduct, remoteUploadImage } from "@/lib/repositories/remote";
 import type { OptionGroup, Product, Tenant } from "@/lib/types";
 import { cn, money, uid } from "@/lib/utils";
@@ -85,6 +86,8 @@ export default function CardapioPage() {
         </form>
       </div>
 
+      {!loading && products.length === 0 && <LoadExamples tenant={tenant} categories={categories} products={products} />}
+
       <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3" data-tour="cardapio-lista">
         {list.map((p) => (
           <li key={p.id}>
@@ -122,6 +125,46 @@ export default function CardapioPage() {
 
       <ProductEditor product={editing} categories={categories} tenant={tenant} onClose={() => setEditing(null)} />
     </div>
+  );
+}
+
+/** Cardápio vazio: explica a tela e carrega os exemplos do nicho com 1 clique (o lojista aprende editando). */
+function LoadExamples({ tenant, categories, products }: { tenant: Tenant; categories: { order: number }[]; products: Product[] }) {
+  const [niche, setNiche] = useState<NicheId>(nicheFromCategory(tenant.category) ?? "cafeteria");
+  const [busy, setBusy] = useState(false);
+  const preset = nicheById(niche)!;
+  const load = async () => {
+    setBusy(true);
+    try {
+      const n = await loadNicheMenu(tenant, niche, { products, categories });
+      toast.success(`${n} produtos de exemplo criados. Toque em Editar para trocar preço e foto.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Empty
+      icon={<UtensilsCrossed className="size-7 text-cz-muted" aria-hidden />}
+      title="Seu cardápio ainda está vazio"
+      action={
+        <>
+          <Select aria-label="Tipo de negócio dos exemplos" value={niche} onChange={(e) => setNiche(e.target.value as NicheId)} className="w-auto">
+            {NICHES.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.label}
+              </option>
+            ))}
+          </Select>
+          <Button variant="brand" onClick={load} loading={busy}>
+            <Sparkles className="size-4" aria-hidden /> Carregar produtos de exemplo de {preset.label}
+          </Button>
+        </>
+      }
+    >
+      É aqui que você cadastra o que vende. Comece com {preset.products.length} exemplos prontos com complementos e ajuste ao seu jeito.
+    </Empty>
   );
 }
 

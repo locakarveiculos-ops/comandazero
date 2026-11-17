@@ -58,7 +58,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       onClick={() => mutate((s) => ({ saasTheme: s.saasTheme === "dark" ? "light" : "dark" }))}
       aria-pressed={dark}
       aria-label={dark ? "Usar tema claro" : "Usar tema escuro"}
-      className={cn("grid size-11 place-items-center rounded-[10px] border border-cz-border bg-cz-surface text-cz-text hover:bg-cz-surface-2", className)}
+      className={cn("grid size-11 shrink-0 place-items-center rounded-[10px] border border-cz-border bg-cz-surface text-cz-text hover:bg-cz-surface-2", className)}
     >
       {dark ? <Sun className="size-[18px]" aria-hidden /> : <Moon className="size-[18px]" aria-hidden />}
     </button>

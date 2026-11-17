@@ -164,6 +164,16 @@ function ProductForm({ product, tenant, onAdd, confirmLabel }: { product: Produc
                   {g.min ? (g.max === 1 ? "Obrigatório" : `Escolha ${g.min} a ${g.max}`) : `Opcional · até ${g.max}`}
                 </span>
               </legend>
+              {g.max > 1 && (
+                <div className="flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={g.max} aria-valuenow={chosen.length} aria-label={`${g.name}: ${chosen.length} de ${g.max} selecionados`}>
+                    <div className="h-full rounded-full bg-ink transition-[width] duration-300" style={{ width: `${(chosen.length / g.max) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold tabular-nums text-ink" aria-hidden>
+                    {chosen.length} de {g.max} selecionados
+                  </span>
+                </div>
+              )}
               <div className="grid gap-2">
                 {g.choices.map((c) => {
                   const on = chosen.includes(c.id);

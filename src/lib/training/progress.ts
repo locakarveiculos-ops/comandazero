@@ -8,10 +8,16 @@ export type Progress = {
   tours: Record<string, TourRecord>;
   articles: Record<string, { done: boolean; helpful?: boolean; updatedAt: string }>;
   welcomeDismissed: boolean;
+  /** Passos da ativação marcados pela própria tela (Pix salvo, pedido de teste, QR das mesas, link compartilhado). */
+  checklist: Record<string, boolean>;
+  /** Escolha do usuário de recolher/abrir o widget; sem escolha, abre só no Dashboard. */
+  checklistCollapsed?: boolean;
+  /** Pedido de teste em andamento (guia Cozinha -> Caixa). */
+  testOrder?: { id: string; number: number };
 };
 
 const KEY = (tenant: string) => `cz-training:${tenant}`;
-const EMPTY: Progress = { tours: {}, articles: {}, welcomeDismissed: false };
+const EMPTY: Progress = { tours: {}, articles: {}, welcomeDismissed: false, checklist: {} };
 const listeners = new Set<() => void>();
 const cache = new Map<string, Progress>();
 
@@ -62,6 +68,9 @@ export function useProgress(tenant: string) {
 
 export const recordTour = (tenant: string, id: string, version: number, status: TourRecord["status"], lastStep: number) =>
   updateProgress(tenant, (p) => ({ ...p, tours: { ...p.tours, [id]: { version, status, lastStep, updatedAt: new Date().toISOString() } } }));
+
+export const markStep = (tenant: string, id: string, done = true) =>
+  updateProgress(tenant, (p) => ({ ...p, checklist: { ...p.checklist, [id]: done } }));
 
 export const markArticle = (tenant: string, id: string, patch: { done?: boolean; helpful?: boolean }) =>
   updateProgress(tenant, (p) => ({ ...p, articles: { ...p.articles, [id]: { ...p.articles[id], ...patch, done: patch.done ?? p.articles[id]?.done ?? false, updatedAt: new Date().toISOString() } } }));
