@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card } from "@/components/ui";
-import { ARTICLES, MODULES, TRAINING_VERSION, articleById } from "@/lib/training/articles";
+import { ARTICLES, TRAINING_VERSION, articleById } from "@/lib/training/articles";
 import { markArticle, useProgress } from "@/lib/training/progress";
 import { CHECKLIST, TOURS } from "@/lib/training/tours";
 import type { Article, Persona } from "@/lib/training/types";
@@ -23,6 +23,10 @@ const PERSONA_LABEL: Record<Persona, string> = {
   cliente: "Cliente",
   "super-admin": "Super Admin",
 };
+// O painel da loja mostra só o que a equipe da loja usa (QA-20). Guias do Super Admin ficam fora.
+const STORE_ARTICLES = ARTICLES.filter((a) => !a.roles.every((r) => r === "super-admin"));
+const STORE_MODULES = [...new Set(STORE_ARTICLES.map((a) => a.module))];
+const STORE_PERSONAS = (Object.keys(PERSONA_LABEL) as Persona[]).filter((p) => p !== "super-admin");
 
 const norm = (s: string) =>
   s
@@ -43,7 +47,7 @@ export function TrainingCenter({ slug }: { slug: string }) {
 
   const list = useMemo(() => {
     const nq = norm(q.trim());
-    return ARTICLES.filter(
+    return STORE_ARTICLES.filter(
       (a) =>
         (persona === "todos" || a.roles.includes(persona)) &&
         (module === "todos" || a.module === module) &&
@@ -62,11 +66,11 @@ export function TrainingCenter({ slug }: { slug: string }) {
         <div>
           <h1 className="cz-heading text-2xl font-bold">Central de treinamento</h1>
           <p className="text-sm text-cz-muted">
-            {ARTICLES.length} guias com prints reais do sistema, {TOURS.length} tours guiados · versão {TRAINING_VERSION}
+            {STORE_ARTICLES.length} guias com prints reais do sistema, {TOURS.length} tours guiados · versão {TRAINING_VERSION}
           </p>
         </div>
         <Badge tone="green">
-          {done} de {ARTICLES.length} guias concluídos
+          {done} de {STORE_ARTICLES.length} guias concluídos
         </Badge>
       </div>
 
@@ -102,15 +106,15 @@ export function TrainingCenter({ slug }: { slug: string }) {
         </label>
         <select aria-label="Filtrar por função" value={persona} onChange={(e) => setPersona(e.target.value as Persona | "todos")} className="min-h-11 rounded-[10px] border border-cz-border bg-cz-surface px-3">
           <option value="todos">Todas as funções</option>
-          {Object.entries(PERSONA_LABEL).map(([k, v]) => (
+          {STORE_PERSONAS.map((k) => (
             <option key={k} value={k}>
-              {v}
+              {PERSONA_LABEL[k]}
             </option>
           ))}
         </select>
         <select aria-label="Filtrar por módulo" value={module} onChange={(e) => setModule(e.target.value)} className="min-h-11 rounded-[10px] border border-cz-border bg-cz-surface px-3">
           <option value="todos">Todos os módulos</option>
-          {MODULES.map((m) => (
+          {STORE_MODULES.map((m) => (
             <option key={m}>{m}</option>
           ))}
         </select>

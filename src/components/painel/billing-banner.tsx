@@ -3,17 +3,22 @@ import Link from "next/link";
 import type { SubscriptionState } from "@/lib/server/subscription";
 import { READ_ONLY_AFTER_DAYS } from "@/lib/plans";
 
-/** Aviso fixo no topo do painel: teste grátis, atraso ou modo só leitura. Só dono/gerente recebem a assinatura. */
-export function BillingBanner({ slug, sub, canPay }: { slug: string; sub: SubscriptionState | null; canPay: boolean }) {
+/**
+ * Aviso fixo no topo do painel: teste grátis, atraso ou modo só leitura.
+ * cta: "link" = botão para Assinatura; "none" = já está na tela de Assinatura (o dono não precisa de recado);
+ * "ask-owner" = equipe sem permissão de pagar (QA-19).
+ */
+export function BillingBanner({ slug, sub, cta: mode }: { slug: string; sub: SubscriptionState | null; cta: "link" | "none" | "ask-owner" }) {
   if (!sub || sub.status === "active") return null;
   const href = `/painel/${slug}/assinatura`;
-  const cta = canPay ? (
-    <Link href={href} className="inline-flex min-h-11 items-center rounded-[10px] bg-cz-navy px-4 text-sm font-semibold text-white">
-      {sub.readOnly ? "Regularizar agora" : "Escolher plano"}
-    </Link>
-  ) : (
-    <span className="text-sm">Avise o dono da loja.</span>
-  );
+  const cta =
+    mode === "link" ? (
+      <Link href={href} className="inline-flex min-h-11 items-center rounded-[10px] bg-cz-navy px-4 text-sm font-semibold text-white">
+        {sub.readOnly ? "Regularizar agora" : "Escolher plano"}
+      </Link>
+    ) : mode === "ask-owner" ? (
+      <span className="text-sm">Avise o dono da loja.</span>
+    ) : null;
 
   if (sub.readOnly)
     return (

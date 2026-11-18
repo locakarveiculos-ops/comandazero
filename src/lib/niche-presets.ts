@@ -209,7 +209,8 @@ export const NICHES: NichePreset[] = [
         groups: [{ name: "Cobertura", min: 0, max: 2, choices: [["Cheddar", 5], ["Bacon", 6]] }],
       },
       {
-        cat: 2, name: "Refrigerante Lata", description: "350 ml bem gelado.", price: 6.5, image: img("1622483767028-3f66f32aef97"),
+        // Foto genérica, sem marca de refrigerante (QA-22).
+        cat: 2, name: "Refrigerante Lata", description: "350 ml bem gelado.", price: 6.5, image: img("1513558161293-cdaf765ed2fd"),
         groups: [{ name: "Sabor", min: 1, max: 1, choices: ["Cola", "Cola zero", "Guaraná", "Laranja"] }],
       },
     ],

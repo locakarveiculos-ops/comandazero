@@ -40,7 +40,7 @@ export function BillingClient({ slug, sub, invoices, renewSoon }: { slug: string
         <h1 className="cz-heading text-2xl font-bold">Assinatura</h1>
         <p className="text-sm text-cz-muted">Plano da ComandaZero para esta loja. Sem comissão por pedido.</p>
       </div>
-      <BillingBanner slug={slug} sub={sub} canPay={false} />
+      <BillingBanner slug={slug} sub={sub} cta="none" />
 
       {sub && (
         <Card className="grid gap-3 sm:grid-cols-3">

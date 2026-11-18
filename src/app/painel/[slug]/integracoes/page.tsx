@@ -66,7 +66,7 @@ export default function IntegracoesPage() {
             <CreditCard className="size-4" aria-hidden /> Pagamentos
           </Tabs.Trigger>
           <Tabs.Trigger value="email" className={tabCls}>
-            <Mail className="size-4" aria-hidden /> E-mail (Resend)
+            <Mail className="size-4" aria-hidden /> E-mail
           </Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="whatsapp">
@@ -157,7 +157,7 @@ function WhatsappTab({ settings, set }: TabProps) {
       });
       const d = (await r.json().catch(() => ({}))) as { error?: string };
       if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-      toast.success("Enviado pela Evolution API");
+      toast.success("Mensagem enviada");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -169,14 +169,14 @@ function WhatsappTab({ settings, set }: TabProps) {
     <div className="grid gap-4 xl:grid-cols-2">
       <Card className="grid min-w-0 content-start gap-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-bold">Provedor</h2>
+          <h2 className="font-bold">Como conectar o WhatsApp</h2>
           <Switch checked={w.enabled} onCheckedChange={(v) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, enabled: v } }))} label="WhatsApp ativo" />
         </div>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Provedor de WhatsApp">
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Como conectar o WhatsApp">
           {(
             [
-              ["whaileys", "Whaileys (botões e listas)", "Motor próprio · um número por loja"],
-              ["evolution", "Evolution API v1/v2", "Texto, mídia, instância e webhooks"],
+              ["whaileys", "WhatsApp da loja (recomendado)", "Mensagens com botões e listas · um número por loja"],
+              ["evolution", "Servidor próprio (técnico)", "Para quem já tem um servidor de WhatsApp"],
             ] as const
           ).map(([id, label, hint]) => (
             <button key={id} type="button" role="radio" aria-checked={w.provider === id} onClick={() => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, provider: id } }))} className={cn("rounded-2xl border p-3 text-left", w.provider === id ? "border-cz-text bg-cz-surface-2" : "border-cz-border")}>
@@ -189,10 +189,10 @@ function WhatsappTab({ settings, set }: TabProps) {
           <WhatsappConnect tenant={tenant} included={wa} />
         ) : (
           <div className="grid gap-3">
-            <Field label="URL do servidor Evolution" id="evo-url">
+            <Field label="Endereço do servidor" id="evo-url">
               <Input id="evo-url" value={w.evolution.baseUrl} placeholder="https://evolution.suaempresa.com.br" onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, baseUrl: e.target.value } } }))} />
             </Field>
-            <Field label="Instância" id="evo-inst">
+            <Field label="Nome da conexão" id="evo-inst">
               <Input id="evo-inst" value={w.evolution.instance} placeholder={tenant.slug} onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, instance: e.target.value } } }))} />
             </Field>
             <p className="rounded-xl bg-cz-surface-2 p-3 text-xs text-cz-muted">
@@ -222,16 +222,16 @@ function WhatsappTab({ settings, set }: TabProps) {
       </Card>
 
       <Card className="grid min-w-0 content-start gap-4">
-        <h2 className="font-bold">Testador de payload ao vivo</h2>
+        <h2 className="font-bold">Teste uma mensagem</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Mensagem" id="pl-kind">
             <Select id="pl-kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
               <option value="order">Pedido recebido (botões)</option>
-              <option value="buttons">sendButtons · 3 botões</option>
-              <option value="list">sendList · categorias</option>
-              <option value="menu">Menu do robô (lista)</option>
-              <option value="evo-text">Evolution · sendText</option>
-              <option value="evo-media">Evolution · sendMedia</option>
+              <option value="buttons">Mensagem com 3 botões</option>
+              <option value="list">Lista de categorias</option>
+              <option value="menu">Menu automático</option>
+              <option value="evo-text">Texto (servidor próprio)</option>
+              <option value="evo-media">Foto (servidor próprio)</option>
             </Select>
           </Field>
           <Field label="Enviar para" id="pl-to">
@@ -239,14 +239,15 @@ function WhatsappTab({ settings, set }: TabProps) {
           </Field>
         </div>
         {isWhaileys && <ChatPreview card={payload as ReturnType<typeof numberedCard>["card"]} />}
-        <div>
-          <p className="mb-1 text-xs font-semibold text-cz-muted">{isWhaileys ? "POST /sessions/cpw-" + tenant.slug + "/send" : `${(payload as { method: string }).method} ${(payload as { path: string }).path}`}</p>
+        <details className="rounded-xl border border-cz-border p-3">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">Detalhes técnicos (para o suporte)</summary>
+          <p className="mb-1 mt-2 text-xs font-semibold text-cz-muted">{isWhaileys ? "POST /sessions/cpw-" + tenant.slug + "/send" : `${(payload as { method: string }).method} ${(payload as { path: string }).path}`}</p>
           <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-72 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify(isWhaileys ? { to: toWhatsappNumber(to), ...payload } : (payload as { body: unknown }).body, null, 2)}</pre>
-        </div>
+        </details>
         <Button variant="brand" onClick={send} loading={sending}>
-          <Send className="size-4" aria-hidden /> {isWhaileys ? "Enviar de verdade pelo WhatsApp da loja" : "Enviar pela Evolution API"}
+          <Send className="size-4" aria-hidden /> {isWhaileys ? "Enviar de verdade pelo WhatsApp da loja" : "Enviar pelo servidor próprio"}
         </Button>
-        {!isWhaileys && <p className="text-xs text-cz-muted">Usa EVOLUTION_API_URL e EVOLUTION_API_KEY do servidor. Sem elas, o envio informa que não está configurado.</p>}
+        {!isWhaileys && <p className="text-xs text-cz-muted">Precisa que o suporte cadastre o seu servidor. Sem isso, o envio avisa que não está configurado.</p>}
       </Card>
     </div>
   );
@@ -299,10 +300,16 @@ function PaymentsTab({ settings, set }: TabProps) {
   return (
     <div className="grid gap-4">
     <SimplePayments settings={settings} set={set} slug={tenant.slug} />
-    <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+    <details className="group rounded-[14px] border border-cz-border bg-cz-surface p-4" data-testid="pagamento-avancado">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 font-bold">
+        Confirmação automática do pagamento (opcional)
+        <span className="text-sm font-normal text-cz-muted group-open:hidden">Mostrar</span>
+      </summary>
+      <p className="mt-1 text-sm text-cz-muted">Ligue com o seu banco ou maquininha para o pedido ficar “Pago” sozinho, sem você conferir. Não é necessário para começar a vender.</p>
+    <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1.2fr]">
       <Card className="grid min-w-0 content-start gap-3">
-        <h2 className="font-bold">Conexão Automática (avançado)</h2>
-        <p className="text-sm text-cz-muted">Opcional: liga o Pix e o cartão online a um banco ou maquininha para o pedido ser marcado como pago sozinho.</p>
+        <h2 className="font-bold">Bancos e maquininhas</h2>
+        <p className="text-sm text-cz-muted">Escolha com qual empresa o pagamento é confirmado automaticamente.</p>
         <ul className="grid gap-2">
           {ids.map((id) => {
             const c = settings.payments.gateways[id];
@@ -311,9 +318,9 @@ function PaymentsTab({ settings, set }: TabProps) {
                 <div className={cn("flex items-center gap-3 rounded-2xl border p-3", gw === id ? "border-cz-text bg-cz-surface-2" : "border-cz-border")}>
                   <button type="button" onClick={() => setGw(id)} className="min-h-11 flex-1 text-left" aria-pressed={gw === id}>
                     <p className="text-sm font-bold">{GATEWAYS[id].label}</p>
-                    <p className="text-xs text-cz-muted">{GATEWAYS[id].features.join(" · ")}</p>
+                    <p className="text-xs text-cz-muted">{GATEWAY_HINT[id]}</p>
                   </button>
-                  <Badge tone={c.enabled ? "green" : "neutral"}>{c.enabled ? c.mode : "off"}</Badge>
+                  <Badge tone={c.enabled ? "green" : "neutral"}>{c.enabled ? (c.mode === "producao" ? "Ligado" : "Em teste") : "Desligado"}</Badge>
                   <Switch checked={c.enabled} onCheckedChange={(v) => set((s) => ({ ...s, payments: { ...s.payments, gateways: { ...s.payments.gateways, [id]: { ...c, enabled: v } } } }))} label={`${GATEWAYS[id].label} ativo`} />
                 </div>
               </li>
@@ -330,7 +337,7 @@ function PaymentsTab({ settings, set }: TabProps) {
               ))}
             </Select>
           </Field>
-          <Field label="Link/cartão online pelo" id="cardgw">
+          <Field label="Cartão online pelo" id="cardgw">
             <Select id="cardgw" value={settings.payments.cardGateway} onChange={(e) => set((s) => ({ ...s, payments: { ...s.payments, cardGateway: e.target.value as GatewayId } }))}>
               {ids.filter((i) => GATEWAYS[i].methods.includes("link")).map((i) => (
                 <option key={i} value={i}>
@@ -355,32 +362,47 @@ function PaymentsTab({ settings, set }: TabProps) {
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Ambiente" id="gw-mode">
               <Select id="gw-mode" value={cfg.mode} onChange={(e) => setCfg({ mode: e.target.value as "sandbox" | "producao" })}>
-                <option value="sandbox">Sandbox</option>
-                <option value="producao">Produção</option>
+                <option value="sandbox">Em teste (sem cobrar)</option>
+                <option value="producao">Valendo (cobrança real)</option>
               </Select>
             </Field>
-            <Field label="Credencial (variável no servidor)" id="gw-key" hint="Nunca salve a chave no navegador.">
+            <Field label="Código de acesso (cadastrado pelo suporte)" id="gw-key" hint="A senha da empresa fica guardada no servidor, nunca no navegador.">
               <Input id="gw-key" value={cfg.keyRef} onChange={(e) => setCfg({ keyRef: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "") })} />
             </Field>
             <label className="flex min-h-11 items-center gap-2 self-end text-sm font-semibold">
-              <Switch checked={cfg.split} onCheckedChange={(v) => setCfg({ split: v })} label="Split com a plataforma" /> Split
+              <Switch checked={cfg.split} onCheckedChange={(v) => setCfg({ split: v })} label="Dividir o valor com a plataforma" /> Dividir valor
             </label>
           </div>
         )}
-        <p className="text-xs font-semibold text-cz-muted">
+        <p className="text-sm text-cz-muted">Simulação de um pagamento de {money(amount)}: o pedido abaixo seria marcado como pago sozinho.</p>
+        <details className="rounded-xl border border-cz-border p-3">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">Detalhes técnicos (para o suporte)</summary>
+        <p className="mt-2 text-xs font-semibold text-cz-muted">
           1. Cobrança · {req.method} {req.url}
         </p>
         <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-64 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#e3c58c]">{JSON.stringify({ headers: req.headers, body: req.body }, null, 2)}</pre>
-        <p className="text-xs font-semibold text-cz-muted">2. Aviso de pagamento confirmado (webhook) recebido em {input.webhookUrl}</p>
+        <p className="text-xs font-semibold text-cz-muted">2. Aviso de pagamento confirmado recebido em {input.webhookUrl}</p>
         <pre className="min-w-0 max-w-full whitespace-pre-wrap break-all max-h-48 overflow-auto rounded-xl bg-[#08162d] p-3 text-xs text-[#9cc3f0]">{JSON.stringify(hook, null, 2)}</pre>
+        </details>
         <p className="rounded-xl bg-cz-success/10 p-3 text-sm text-cz-success">
-          3. Normalizado: pedido <b>{parsed?.chargeId}</b> → <b>{parsed?.status === "paid" ? "PAGO" : parsed?.status}</b> · {money(amount)}
+          Resultado: pedido <b>{parsed?.chargeId}</b> → <b>{parsed?.status === "paid" ? "PAGO" : parsed?.status}</b> · {money(amount)}
         </p>
       </Card>
     </div>
+    </details>
     </div>
   );
 }
+
+// O que cada empresa faz, em linguagem de lojista (QA-16). Detalhe técnico fica em GATEWAYS[id].features.
+const GATEWAY_HINT: Record<GatewayId, string> = {
+  infinitepay: "Pix e maquininha InfinitePay",
+  asaas: "Pix com QR Code e link de pagamento",
+  mercadopago: "Pix, maquininha Point e link de pagamento",
+  pagbank: "Pix, cartão e maquininha PagBank",
+  stone: "Pix, link e maquininha Ton/Stone",
+  presencial: "Dinheiro com troco, cartão na maquininha e vale-refeição",
+};
 
 /** Recebimento simples (sem API): Pix na chave da loja, dinheiro com troco e cartão na maquininha. */
 function SimplePayments({ settings, set, slug }: TabProps & { slug: string }) {
@@ -402,11 +424,11 @@ function SimplePayments({ settings, set, slug }: TabProps & { slug: string }) {
         <p className="text-sm text-cz-muted">Sem configuração técnica. O dinheiro cai direto na sua conta.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <Field label="Chave Pix" id="pix-key" hint="CPF, CNPJ, e-mail, celular ou chave aleatória">
-          <Input id="pix-key" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} />
+        <Field label="Chave Pix" id="pix-key" hint="Ex.: CPF, CNPJ, e-mail ou celular (19) 99999-0000">
+          <Input id="pix-key" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="CPF, CNPJ, e-mail, celular ou chave aleatória" />
         </Field>
-        <Field label="Nome de quem recebe" id="pix-name" hint="O cliente confere antes de pagar">
-          <Input id="pix-name" autoComplete="name" value={holder} onChange={(e) => setHolder(e.target.value)} />
+        <Field label="Nome de quem recebe" id="pix-name" hint="Como aparece no banco. O cliente confere antes de pagar.">
+          <Input id="pix-name" autoComplete="organization" value={holder} onChange={(e) => setHolder(e.target.value)} />
         </Field>
         <Button variant="brand" onClick={save}>
           Salvar
@@ -418,6 +440,17 @@ function SimplePayments({ settings, set, slug }: TabProps & { slug: string }) {
           checked={presencial.enabled}
           onCheckedChange={(v) => (set((s) => ({ ...s, payments: { ...s.payments, gateways: { ...s.payments.gateways, presencial: { ...presencial, enabled: v } } } })), markStep(slug, "pix"))}
           label="Aceitar dinheiro e cartão na maquininha"
+        />
+      </label>
+      <label className="flex min-h-11 items-center justify-between gap-3 rounded-[10px] bg-cz-surface-2 px-3 text-sm font-semibold">
+        <span>
+          Vale-refeição
+          <span className="block text-xs font-normal text-cz-muted">{settings.payments.acceptVR.join(", ")}</span>
+        </span>
+        <Switch
+          checked={!!settings.payments.vrEnabled && presencial.enabled}
+          onCheckedChange={(v) => set((s) => ({ ...s, payments: { ...s.payments, vrEnabled: v } }))}
+          label="Aceitar vale-refeição"
         />
       </label>
     </Card>
@@ -461,16 +494,16 @@ function EmailTab({ settings, set }: TabProps) {
     <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
       <Card className="grid min-w-0 content-start gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold">Resend</h2>
+          <h2 className="font-bold">E-mail para o cliente</h2>
           <Switch checked={e.enabled} onCheckedChange={(v) => set((s) => ({ ...s, email: { ...s.email, enabled: v } }))} label="E-mail ativo" />
         </div>
         <p className="text-xs text-cz-muted">
-          A chave fica no servidor (<code>RESEND_API_KEY</code>). Cada loja envia do próprio subdomínio verificado.
+          Envia recibo do pedido e o fechamento do caixa por e-mail, com o nome da sua loja.
         </p>
         <Field label="Nome do remetente" id="em-name">
           <Input id="em-name" value={e.fromName} placeholder={tenant.name} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, fromName: ev.target.value } }))} />
         </Field>
-        <Field label="Subdomínio de envio" id="em-sub">
+        <Field label="Endereço de envio" id="em-sub">
           <Input id="em-sub" value={e.subdomain} placeholder={tenantEmailDomain(tenant.subdomain, ROOT_DOMAIN)} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, subdomain: ev.target.value.toLowerCase().trim(), verified: false } }))} />
         </Field>
         <Field label="E-mail do dono (fechamento de caixa)" id="em-owner">
@@ -478,7 +511,7 @@ function EmailTab({ settings, set }: TabProps) {
         </Field>
         <div>
           <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            DNS para verificar <Badge tone={e.verified ? "green" : "amber"}>{e.verified ? "Verificado" : "Pendente"}</Badge>
+            Configuração do domínio (o suporte faz para você) <Badge tone={e.verified ? "green" : "amber"}>{e.verified ? "Verificado" : "Pendente"}</Badge>
           </p>
           <ul className="grid gap-1.5 text-xs">
             {dnsRecordsFor(domain).map((r) => (
@@ -497,7 +530,7 @@ function EmailTab({ settings, set }: TabProps) {
             className="mt-3"
             onClick={() => {
               set((s) => ({ ...s, email: { ...s.email, verified: true } }));
-              toast.success("Domínio marcado como verificado (sandbox)");
+              toast.success("Domínio marcado como verificado (teste)");
             }}
           >
             Verificar domínio

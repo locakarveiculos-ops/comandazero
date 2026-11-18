@@ -12,6 +12,10 @@ export const getRealTenant = cache(async (slug: string): Promise<Tenant | null> 
   if (!data) return null;
   const t = tenantFromRow(data, data.delivery_zones ?? []);
   // Nota real: o banco só devolve média com 10 ou mais avaliações.
-  const { data: r } = await sb.rpc("tenant_rating", { p_tenant: data.id }).maybeSingle<{ rating: number | null; total: number }>();
-  return { ...t, rating: r?.rating == null ? 0 : Number(r.rating), ratingCount: r?.rating == null ? 0 : Number(r.total) };
+  const [{ data: r }, { data: pay }] = await Promise.all([
+    sb.rpc("tenant_rating", { p_tenant: data.id }).maybeSingle<{ rating: number | null; total: number }>(),
+    // Banco sem a função (migration ainda não aplicada): undefined, e o carrinho cai no padrão.
+    sb.rpc("tenant_payment_options", { p_slug: slug }),
+  ]);
+  return { ...t, paymentOptions: (pay as Tenant["paymentOptions"]) ?? undefined, rating: r?.rating == null ? 0 : Number(r.rating), ratingCount: r?.rating == null ? 0 : Number(r.total) };
 });

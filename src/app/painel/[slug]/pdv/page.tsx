@@ -341,15 +341,16 @@ function PayForm({ total, onFinish }: { total: number; onFinish: (p: PaymentSpli
         </div>
       </fieldset>
 
-      <label className="grid gap-1.5 text-sm font-semibold">
-        {method === "dinheiro" ? "Valor recebido em dinheiro" : "Valor nesta forma"}
+      <div className="grid gap-1.5 text-sm font-semibold">
+        {/* label só no texto: o botão ao lado não pode entrar no nome do campo (QA-28). */}
+        <label htmlFor="pdv-valor">{method === "dinheiro" ? "Valor recebido em dinheiro" : "Valor nesta forma"}</label>
         <div className="flex gap-2">
-          <input ref={amountRef} autoFocus inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,.]/g, ""))} onKeyDown={(e) => e.key === "Enter" && add()} className="min-h-14 min-w-0 flex-1 rounded-xl border border-cz-border px-4 text-2xl font-bold tabular-nums" />
+          <input id="pdv-valor" ref={amountRef} autoFocus inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,.]/g, ""))} onKeyDown={(e) => e.key === "Enter" && add()} className="min-h-14 min-w-0 flex-1 rounded-xl border border-cz-border px-4 text-2xl font-bold tabular-nums" />
           <Button variant="brand" size="lg" onClick={add}>
             {value >= remaining - 0.001 ? "Concluir" : "Lançar parte"}
           </Button>
         </div>
-      </label>
+      </div>
       {method === "dinheiro" && cashChange > 0 && (
         <p className="rounded-xl bg-cz-success/10 p-3 text-center text-lg font-bold text-cz-success" aria-live="polite">
           Troco: {money(cashChange)}

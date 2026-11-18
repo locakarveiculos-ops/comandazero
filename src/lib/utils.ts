@@ -130,6 +130,19 @@ export const slugify = (v: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
 
+/**
+ * slugify enquanto a pessoa digita: mantém o hífen do fim ("burger-" vira "burger-", não "burger"),
+ * senão o hífen some a cada tecla e "burger-station" vira "burgerstation" (QA-04). Limpar no fim com slugify.
+ */
+export const slugifyTyping = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .slice(0, 40);
+
 // Contraste WCAG para validar cores escolhidas pelo lojista.
 function luminance(hex: string) {
   const h = hex.replace("#", "");

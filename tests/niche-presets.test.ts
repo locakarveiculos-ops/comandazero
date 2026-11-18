@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NICHES, buildPresetMenu, nicheFromCategory } from "@/lib/niche-presets";
 import { normalizePixKey } from "@/lib/pix";
-import { contrastRatio, readableInk } from "@/lib/utils";
+import { contrastRatio, readableInk, slugify, slugifyTyping } from "@/lib/utils";
 
 describe("presets dos nichos", () => {
   it("6 nichos com cardápio montável e complementos coerentes", () => {
@@ -34,6 +34,15 @@ describe("presets dos nichos", () => {
     expect(nicheFromCategory("Cafeteria artesanal")).toBe("cafeteria");
     expect(nicheFromCategory("Restaurante de balcão")).toBe("restaurante_balcao");
     expect(nicheFromCategory("Pizzaria")).toBeUndefined();
+  });
+});
+
+describe("endereço do cardápio (QA-04)", () => {
+  it("hífen digitado não some a cada tecla", () => {
+    let v = "";
+    for (const ch of "burger-station") v = slugifyTyping(v + ch);
+    expect(v).toBe("burger-station");
+    expect(slugify("burger-")).toBe("burger");
   });
 });
 

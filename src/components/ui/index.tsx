@@ -74,6 +74,7 @@ export function Select({ className, ...p }: SelectHTMLAttributes<HTMLSelectEleme
   return <select className={cn(inputBase, "pr-8", className)} {...p} />;
 }
 
+/** Interruptor com área de toque de 48×44 (WCAG 2.5.8 / QA-27): o trilho visível tem 48×28, a caixa clicável, 44 de altura. */
 export function Switch({ checked, onCheckedChange, label, id }: { checked: boolean; onCheckedChange: (v: boolean) => void; label: string; id?: string }) {
   return (
     <SwitchPrimitive.Root
@@ -81,9 +82,9 @@ export function Switch({ checked, onCheckedChange, label, id }: { checked: boole
       checked={checked}
       onCheckedChange={onCheckedChange}
       aria-label={label}
-      className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-[#8a94a6] transition data-[state=checked]:bg-[#16845b] before:absolute before:-inset-2 before:content-['']"
+      className="relative inline-flex h-11 w-12 shrink-0 items-center rounded-full bg-transparent transition before:absolute before:inset-x-0 before:top-1/2 before:h-7 before:-translate-y-1/2 before:rounded-full before:bg-[#8a94a6] before:transition before:content-[''] data-[state=checked]:before:bg-[#16845b]"
     >
-      <SwitchPrimitive.Thumb className="block size-5 translate-x-1 rounded-full bg-white shadow transition data-[state=checked]:translate-x-6" />
+      <SwitchPrimitive.Thumb className="relative block size-5 translate-x-1 rounded-full bg-white shadow transition data-[state=checked]:translate-x-6" />
     </SwitchPrimitive.Root>
   );
 }
@@ -97,6 +98,7 @@ export function Modal({
   side = "center",
   className,
   hideTitle,
+  titleAs = "header",
   themeStyle,
 }: {
   open: boolean;
@@ -107,6 +109,8 @@ export function Modal({
   side?: "center" | "right" | "bottom";
   className?: string;
   hideTitle?: boolean;
+  /** "none": o conteúdo renderiza o próprio <DialogTitle> (evita o título duplicado). */
+  titleAs?: "header" | "none";
   /** Variáveis de tema do estabelecimento: o portal fica fora do wrapper da loja. */
   themeStyle?: CSSProperties;
 }) {
@@ -122,6 +126,7 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px]" />
         <Dialog.Content
+          {...(description ? {} : { "aria-describedby": undefined })}
           style={themeStyle}
           data-saas-theme={themeStyle ? undefined : saasTheme}
           className={cn(
@@ -132,13 +137,16 @@ export function Modal({
             className,
           )}
         >
-          <div className={cn("flex items-start justify-between gap-3 px-5 pt-5", hideTitle && "sr-only")}>
-            <div>
-              <Dialog.Title className="text-lg font-bold">{title}</Dialog.Title>
-              {description && <Dialog.Description className="text-sm opacity-75">{description}</Dialog.Description>}
+          {titleAs === "header" && (
+            <div className={cn("flex items-start justify-between gap-3 px-5 pt-5", hideTitle && "sr-only")}>
+              <div>
+                <Dialog.Title className="text-lg font-bold">{title}</Dialog.Title>
+                {description && <Dialog.Description className="text-sm opacity-75">{description}</Dialog.Description>}
+              </div>
             </div>
-          </div>
-          {!description && <Dialog.Description className="sr-only">{title}</Dialog.Description>}
+          )}
+          {/* Sem descrição: Radix exige aria-describedby; desliga em vez de repetir o título. */}
+          {description && titleAs === "none" && <Dialog.Description className="sr-only">{description}</Dialog.Description>}
           <Dialog.Close
             aria-label="Fechar"
             className="absolute right-3 top-3 z-10 grid size-11 place-items-center rounded-full bg-white/95 text-[#0b1f40] shadow-md hover:bg-white"
@@ -151,6 +159,9 @@ export function Modal({
     </Dialog.Root>
   );
 }
+
+/** Título do modal renderizado pelo próprio conteúdo (Modal com titleAs="none"). */
+export const DialogTitle = Dialog.Title;
 
 export function Badge({ children, tone = "neutral", className }: { children: ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue"; className?: string }) {
   const tones = {

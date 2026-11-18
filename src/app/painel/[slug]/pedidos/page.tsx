@@ -13,6 +13,7 @@ import { PushToggle } from "@/components/push-toggle";
 import { toast } from "sonner";
 import type { Tenant } from "@/lib/types";
 import type { Order, OrderStatus } from "@/lib/types";
+import { paymentSummary } from "@/lib/payment-info";
 import { useMinute } from "@/lib/use-now";
 import { MODE_LABEL, STATUS_LABEL, cn, elapsedMinutes, fmtDateTime, formatPhone, money } from "@/lib/utils";
 
@@ -110,7 +111,12 @@ export default function PedidosPage() {
               {o.scheduledFor && <p className="mt-2 text-sm font-semibold text-cz-info">Retirada: {fmtDateTime(o.scheduledFor)}</p>}
               {o.address && <p className="mt-2 text-sm text-cz-muted">📍 {o.address.street}, {o.address.number} · {o.address.district}</p>}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-cz-border pt-3" data-tour="pedido-acoes">
-                <p className="font-bold tabular-nums">{money(o.total)}</p>
+                <p>
+                  <span className="block font-bold tabular-nums">{money(o.total)}</span>
+                  <span className="block text-xs text-cz-muted" data-testid="pagamento-pedido">
+                    {paymentSummary(o)}
+                  </span>
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {o.customer.phone && (
                     <a href={`https://wa.me/${o.customer.phone}`} target="_blank" rel="noopener" aria-label={`WhatsApp de ${o.customer.name}`} className="grid size-11 place-items-center rounded-full bg-cz-success/10 text-cz-success hover:bg-cz-success/20">

@@ -257,8 +257,9 @@ async function main() {
       await page.getByLabel("Prévia da conversa no WhatsApp").scrollIntoViewIfNeeded();
       await save(page, "integracoes/testador", `${S}/integracoes`, "testador com lista de categorias", "desktop");
       await page.getByRole("tab", { name: /Pagamentos/ }).click();
+      await page.getByTestId("pagamento-avancado").locator("> summary").click();
       await page.getByText(/→ PAGO/).waitFor();
-      await save(page, "integracoes/pagamentos", `${S}/integracoes`, "gateways e webhook", "desktop");
+      await save(page, "integracoes/pagamentos", `${S}/integracoes`, "formas de receber e confirmação automática", "desktop");
     });
 
     // Telas que exigem login: contexto separado, para não misturar com a demonstração aberta.

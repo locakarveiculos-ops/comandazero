@@ -13,7 +13,7 @@ import { StoreHelp } from "@/components/training/store-help";
 import { ProductModal } from "@/components/loja/product-modal";
 import { Checkout } from "@/components/loja/checkout";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
-import { TenantTheme, displayFont } from "@/components/tenant-theme";
+import { TenantLogo, TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
 import { addToCart, requestBill, useCart, useOrders, useDb } from "@/lib/repositories";
 import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
@@ -103,6 +103,16 @@ export function StorePage({ slug }: { slug: string }) {
   const subtotal = cartSubtotal(cart);
   const featured = products.filter((p) => p.featured && p.available).slice(0, 6);
   const modes = tenant.modes.filter((m) => m !== "mesa" || table);
+  // Só o que foi preenchido (QA-12): loja nova tem só cidade/UF.
+  const a = tenant.address;
+  const addressLine = [a.street, a.district].filter(Boolean).join(", ");
+  const fullAddress = [a.street, a.district, [a.city, a.uf].filter(Boolean).join("-"), a.cep && `CEP ${a.cep}`].filter(Boolean).join(" · ");
+  // Busca com exemplos do próprio cardápio (QA-21), não de café para toda loja.
+  const searchHint = `Buscar ${products
+    .filter((p) => p.available)
+    .slice(0, 3)
+    .map((p) => p.name.split(" ").slice(0, 2).join(" ").toLowerCase())
+    .join(", ") || "no cardápio"}…`;
 
   const add = (item: Parameters<typeof addToCart>[1]) => {
     addToCart(tenant.id, item);
@@ -118,14 +128,14 @@ export function StorePage({ slug }: { slug: string }) {
   return (
     <TenantTheme tenant={tenant} className="min-h-screen pb-28">
       <header className="relative">
-        <div className="h-44 w-full overflow-hidden sm:h-60">
-          <img src={tenant.cover} alt="" className="size-full object-cover" />
+        <div className="h-44 w-full overflow-hidden bg-primary sm:h-60">
+          {tenant.cover && <img src={tenant.cover} alt="" className="size-full object-cover" />}
           <div className="absolute inset-0 h-44 bg-gradient-to-b from-black/10 via-black/20 to-black/60 sm:h-60" aria-hidden />
         </div>
         <div className="mx-auto -mt-16 max-w-5xl px-4">
           <div className="relative rounded-3xl border border-line bg-surface p-5 shadow-xl shadow-black/10">
             <div className="flex flex-wrap items-start gap-4">
-              <img src={tenant.logo} alt={`Logo ${tenant.name}`} className="-mt-12 size-24 shrink-0 rounded-full border-4 border-surface bg-surface object-cover shadow-lg" />
+              <TenantLogo tenant={tenant} alt={`Logo ${tenant.name}`} className="-mt-12 size-24 shrink-0 rounded-full border-4 border-surface bg-surface text-3xl shadow-lg" />
               <div className="min-w-[10rem] flex-1">
                 <h1 className={cn("text-3xl font-bold leading-tight text-ink sm:text-4xl", displayFont(tenant))}>{tenant.name}</h1>
                 <p className="mt-0.5 text-sm text-muted">{tenant.tagline}</p>
@@ -153,10 +163,12 @@ export function StorePage({ slug }: { slug: string }) {
                 <span className="text-muted">({tenant.ratingCount} avaliações)</span>
               </li>
               )}
-              <li className="flex items-center gap-1.5">
-                <MapPin className="size-4 text-muted" aria-hidden />
-                <span>{tenant.address.complement ?? `${tenant.address.street}, ${tenant.address.district}`}</span>
-              </li>
+              {addressLine && (
+                <li className="flex items-center gap-1.5">
+                  <MapPin className="size-4 text-muted" aria-hidden />
+                  <span>{tenant.address.complement || addressLine}</span>
+                </li>
+              )}
             </ul>
             {table && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-secondary/10 p-3 text-sm text-ink">
@@ -227,7 +239,7 @@ export function StorePage({ slug }: { slug: string }) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar café, bolo, croissant…"
+              placeholder={searchHint}
               className="min-h-12 w-full rounded-full border border-line bg-surface pl-11 pr-4 text-base text-ink placeholder:text-muted"
             />
           </label>
@@ -311,25 +323,31 @@ export function StorePage({ slug }: { slug: string }) {
         {visible.length === 0 && <p className="mt-10 text-center text-muted">Nada encontrado para “{query}”.</p>}
 
         <footer className="mt-14 grid gap-3 border-t border-line pt-6 text-sm text-muted">
-          <p className="flex items-start gap-2">
-            <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
-              {tenant.address.complement && (
-                <>
-                  {tenant.address.complement}
-                  <br />
-                </>
-              )}
-              {tenant.address.street} · {tenant.address.district} · {tenant.address.city}-{tenant.address.uf} · CEP {tenant.address.cep}
-            </span>
-          </p>
+          {(tenant.address.complement || fullAddress) && (
+            <p className="flex items-start gap-2">
+              <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                {tenant.address.complement && (
+                  <>
+                    {tenant.address.complement}
+                    <br />
+                  </>
+                )}
+                {fullAddress}
+              </span>
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 font-semibold text-ink ring-1 ring-line">
-              <MessageCircle className="size-4" aria-hidden /> WhatsApp
-            </a>
-            <a href={`https://instagram.com/${tenant.instagram}`} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 font-semibold text-ink ring-1 ring-line">
-              <AtSign className="size-4" aria-hidden /> @{tenant.instagram}
-            </a>
+            {tenant.whatsapp && (
+              <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 font-semibold text-ink ring-1 ring-line">
+                <MessageCircle className="size-4" aria-hidden /> WhatsApp
+              </a>
+            )}
+            {tenant.instagram && (
+              <a href={`https://instagram.com/${tenant.instagram}`} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 font-semibold text-ink ring-1 ring-line">
+                <AtSign className="size-4" aria-hidden /> @{tenant.instagram}
+              </a>
+            )}
           </div>
           <p className="text-xs">Cardápio digital da loja · tecnologia ComandaZero</p>
         </footer>

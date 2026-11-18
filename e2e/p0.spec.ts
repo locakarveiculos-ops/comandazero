@@ -267,7 +267,7 @@ test.describe("Loja real: cardápio, marca e integrações", () => {
   test("integrações abrem completas no teste grátis, com WhatsApp incluído", async ({ browser }) => {
     const { ctx, page } = await login(browser, "OWNER", `/painel/${SLUG}/integracoes`);
     await page.waitForURL(`**/painel/${SLUG}/integracoes`);
-    for (const tab of ["WhatsApp", "Pagamentos", "E-mail (Resend)"]) await expect(page.getByRole("tab", { name: tab })).toBeVisible();
+    for (const tab of ["WhatsApp", "Pagamentos", "E-mail"]) await expect(page.getByRole("tab", { name: tab })).toBeVisible();
     await expect(page.getByText(/Incluído no seu plano/)).toBeVisible();
     await expect(page.getByLabel("Código de ativação")).toHaveCount(0);
     await ctx.close();

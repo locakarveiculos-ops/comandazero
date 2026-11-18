@@ -56,6 +56,8 @@ export type Tenant = {
   loyalty: { enabled: boolean; goal: number; reward: string; categoryIds: string[]; cashbackPct: number };
   /** Loja de demonstração: dados só no navegador. Lojas reais (false) usam o Supabase. */
   isDemo?: boolean;
+  /** Loja real: formas aceitas no carrinho (sem a chave Pix), lidas pelo servidor. */
+  paymentOptions?: { pix: boolean; presencial: boolean; vr: string[] };
 };
 
 export type OptionChoice = { id: string; name: string; price: number };
@@ -197,6 +199,8 @@ export type IntegrationSettings = {
     cardGateway: GatewayId;
     gateways: Record<GatewayId, { enabled: boolean; mode: "sandbox" | "producao"; keyRef: string; split: boolean }>;
     acceptVR: string[];
+    /** Aceita vale-refeição no checkout (bandeiras em acceptVR). Ausente = não aceita. */
+    vrEnabled?: boolean;
     /** Pix com chave própria (sem Conexão Automática): chave e nome de quem recebe. */
     pixKey?: string;
     pixName?: string;

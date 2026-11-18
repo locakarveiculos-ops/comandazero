@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { Badge, Button, Card, Field, Input, Select, Switch } from "@/components/ui";
 import { redeemLoyalty, saveCoupon, updateTenant, useCoupons, useLoyalty, useMenu } from "@/lib/repositories";
+import { nicheFromCategory, type NicheId } from "@/lib/niche-presets";
 import type { Coupon } from "@/lib/types";
+
+const STAMP: Record<NicheId, string> = { cafeteria: "☕", padaria: "🥖", confeitaria: "🧁", hamburgueria: "🍔", acai_sorveteria: "🍨", restaurante_balcao: "🍽️" };
 import { formatPhone, money, uid } from "@/lib/utils";
 
 export default function FidelidadePage() {
@@ -23,6 +26,8 @@ export default function FidelidadePage() {
 
   if (!tenant) return null;
   const l = tenant.loyalty;
+  // Selo e cores da prévia do cartão seguem o nicho e a marca da loja (QA-17).
+  const stamp = STAMP[nicheFromCategory(tenant.category) ?? "cafeteria"];
   const setL = (patch: Partial<typeof l>) => updateTenant(tenant.id, { loyalty: { ...l, ...patch } });
 
   return (
@@ -64,13 +69,13 @@ export default function FidelidadePage() {
               })}
             </div>
           </fieldset>
-          <div className="rounded-2xl bg-gradient-to-br from-[#2c1a12] to-[#5e3a2a] p-5 text-[#faf6f0]" aria-label="Prévia do cartão">
+          <div className="rounded-2xl p-5" style={{ background: tenant.theme.primary, color: tenant.theme.primaryInk }} aria-label="Prévia do cartão">
             <p className="font-serif text-xl font-bold">{tenant.name}</p>
-            <p className="text-sm opacity-85">A cada {l.goal}, ganhe {l.reward.toLowerCase()}</p>
+            <p className="text-sm opacity-85">A cada {l.goal}, ganhe {(l.reward || "um prêmio").toLowerCase()}</p>
             <div className="mt-4 grid grid-cols-5 gap-2" aria-hidden>
               {Array.from({ length: l.goal }, (_, i) => (
-                <span key={i} className={`grid aspect-square place-items-center rounded-full border-2 border-[#d49b4b] ${i < 7 ? "bg-[#d49b4b] text-[#2c1a12]" : ""}`}>
-                  {i < 7 ? "☕" : ""}
+                <span key={i} className="grid aspect-square place-items-center rounded-full border-2" style={{ borderColor: tenant.theme.primaryInk, background: i < 7 ? tenant.theme.primaryInk : undefined }}>
+                  {i < 7 ? stamp : ""}
                 </span>
               ))}
             </div>

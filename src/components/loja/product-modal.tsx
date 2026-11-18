@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- fotos podem vir de upload (data URL) do lojista */
 import { CalendarClock, Check } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button, Modal, Stepper, Textarea } from "@/components/ui";
+import { Button, DialogTitle, Modal, Stepper, Textarea } from "@/components/ui";
 import { earliestPickup, selectedOptions, unitPrice, validateSelections, type Selections } from "@/lib/pricing";
 import type { CakeOrder, CartItem, Product, Tenant } from "@/lib/types";
 import { cn, fmtDateTime, money, round2 } from "@/lib/utils";
@@ -28,7 +28,7 @@ export function ProductModal({
   confirmLabel?: string;
 }) {
   return (
-    <Modal open={!!product} onOpenChange={(v) => !v && onClose()} title={product?.name ?? "Produto"} side="bottom" hideTitle themeStyle={themeVars(tenant.theme)}>
+    <Modal open={!!product} onOpenChange={(v) => !v && onClose()} title={product?.name ?? "Produto"} titleAs="none" side="bottom" themeStyle={themeVars(tenant.theme)}>
       {product && <ProductForm key={product.id} product={product} tenant={tenant} onAdd={onAdd} confirmLabel={confirmLabel} />}
     </Modal>
   );
@@ -98,7 +98,8 @@ function ProductForm({ product, tenant, onAdd, confirmLabel }: { product: Produc
       <div className="grid gap-5 p-5">
         <div>
           {product.badge && <p className="text-xs font-bold uppercase tracking-wider text-accent-text">{product.badge}</p>}
-          <h2 className={cn("mt-1 text-2xl font-bold text-ink", displayFont(tenant))}>{product.name}</h2>
+          {/* Único título do modal (QA-28): é o Dialog.Title, o modal não repete o nome escondido. */}
+          <DialogTitle className={cn("mt-1 text-2xl font-bold text-ink", displayFont(tenant))}>{product.name}</DialogTitle>
           <p className="mt-1.5 text-sm text-muted">{product.description}</p>
           <p className="mt-2 font-bold tabular-nums text-ink">{product.priceLabel ?? money(product.price)}</p>
         </div>

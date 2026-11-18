@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- logo da loja pode vir de upload */
 import {
   BarChart3,
   Bell,
@@ -28,6 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, createContext, useContext, useState, type ReactNode } from "react";
 import { BrandLogo, SaasSurface, ThemeToggle, useSaasTheme } from "@/components/brand-switcher";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
+import { TenantLogo } from "@/components/tenant-theme";
 import { useOrderAlerts, useRemoteOrderAlert } from "@/components/painel/use-panel";
 import { Skeleton } from "@/components/ui";
 import { ActivationButton } from "@/components/training/activation-checklist";
@@ -190,7 +190,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
             <MenuIcon className="size-5" aria-hidden />
           </button>
           {/* Marca da loja que está sendo operada (white-label), não da plataforma. */}
-          <img src={tenant.logo} alt="" className="size-9 rounded-full border border-cz-border object-cover" />
+          <TenantLogo tenant={tenant} className="size-9 shrink-0 rounded-full border border-cz-border text-xs" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold leading-tight">{tenant.name}</p>
             <p className="flex items-center gap-1.5 truncate text-xs text-cz-muted">
@@ -202,7 +202,7 @@ export function PanelShell({ slug, children, access, banner, stores }: { slug: s
                   {live ? "Ao vivo" : "Reconectando…"}
                 </span>
               )}
-              · {tenant.subdomain}
+              · {tenant.slug}
             </p>
           </div>
           <button

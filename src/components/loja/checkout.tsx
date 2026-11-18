@@ -13,23 +13,41 @@ import type { ChargeResult } from "@/lib/integrations/payments/types";
 import { couponDiscount, couponError } from "@/lib/pricing";
 import { isRemote } from "@/lib/repositories/engine";
 import { addToTable, clearCart, createOrder, findCoupon, markOrderPaid, rememberCustomer, setCartQty, useCart, useDb, useIntegrations } from "@/lib/repositories";
-import type { OrderMode, PaymentMethod, Tenant } from "@/lib/types";
+import type { GatewayId, IntegrationSettings, OrderMode, PaymentMethod, Tenant } from "@/lib/types";
 import { MODE_LABEL, cartSubtotal, cn, formatCep, formatPhone, isValidBrPhone, money, onlyDigits, round2 } from "@/lib/utils";
 
 type Address = { cep: string; street: string; number: string; district: string; city: string; complement: string };
 
 const PAY: { id: PaymentMethod; label: string; icon: typeof QrCode; hint: string }[] = [
-  { id: "pix", label: "Pix", icon: QrCode, hint: "Aprovação na hora" },
+  { id: "pix", label: "Pix", icon: QrCode, hint: "QR Code depois de enviar" },
   { id: "cartao_credito", label: "Cartão", icon: CreditCard, hint: "Na maquininha" },
   { id: "dinheiro", label: "Dinheiro", icon: Banknote, hint: "Informe o troco" },
   { id: "vale_refeicao", label: "Vale-refeição", icon: Ticket, hint: "Alelo, Pluxee, VR, Ticket" },
 ];
+
+/**
+ * Formas que a loja aceita (QA-07). Loja real: vem do banco (tenant_payment_options, sem expor chave).
+ * Demonstração: das configurações do navegador. Pix exige chave própria (ou Conexão Automática na demo);
+ * dinheiro/cartão, o recebimento presencial; vale, a opção ligada em Pagamentos.
+ */
+export function acceptedMethods(tenant: Pick<Tenant, "paymentOptions">, settings: IntegrationSettings | undefined): { methods: PaymentMethod[]; vr: string[] } {
+  const o = tenant.paymentOptions;
+  if (o) return { methods: [...(o.pix ? (["pix"] as const) : []), ...(o.presencial ? (["cartao_credito", "dinheiro"] as const) : []), ...(o.vr.length ? (["vale_refeicao"] as const) : [])], vr: o.vr };
+  if (!settings) return { methods: ["pix", "cartao_credito", "dinheiro"], vr: [] };
+  const p = settings.payments;
+  const pix = !!p.pixKey || (Object.keys(p.gateways) as GatewayId[]).some((g) => g !== "presencial" && p.gateways[g]?.enabled);
+  const presencial = p.gateways.presencial?.enabled !== false;
+  const vr = presencial && p.vrEnabled ? p.acceptVR : [];
+  return { methods: [...(pix ? (["pix"] as const) : []), ...(presencial ? (["cartao_credito", "dinheiro"] as const) : []), ...(vr.length ? (["vale_refeicao"] as const) : [])], vr };
+}
 
 export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: Tenant; mode: OrderMode; table?: string; open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();
   const items = useCart(tenant.id);
   const saved = useDb((s) => s.customer);
   const settings = useIntegrations(tenant.id);
+  const accepted = acceptedMethods(tenant, settings);
+  const payOptions = PAY.filter((p) => accepted.methods.includes(p.id));
 
   const [name, setName] = useState(saved?.name ?? "");
   const [phone, setPhone] = useState(saved ? formatPhone(saved.phone) : "");
@@ -37,7 +55,9 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
   const [zoneId, setZoneId] = useState("");
   const [cepState, setCepState] = useState<"idle" | "loading" | "error">("idle");
   const [pickupTime, setPickupTime] = useState("");
-  const [pay, setPay] = useState<PaymentMethod>("pix");
+  const [payChoice, setPay] = useState<PaymentMethod | null>(null);
+  // Primeira forma aceita até o cliente escolher (encomenda exige Pix).
+  const pay: PaymentMethod = payChoice && accepted.methods.includes(payChoice) ? payChoice : (accepted.methods[0] ?? "dinheiro");
   const [changeFor, setChangeFor] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState("");
@@ -301,7 +321,7 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
                       </option>
                     ))}
                   </select>
-                  <span className="text-xs font-normal text-muted">Fora da lista? {money(tenant.deliveryPerKm)}/km, combinado pelo WhatsApp.</span>
+                  <span className="text-xs font-normal text-muted">{tenant.deliveryPerKm > 0 ? `Fora da lista? ${money(tenant.deliveryPerKm)}/km, combinado pelo WhatsApp.` : "Seu bairro não está na lista? Fale com a loja pelo WhatsApp."}</span>
                 </label>
               </section>
             )}
@@ -320,11 +340,12 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
               </h3>
               {isRemote(tenant) && pay === "pix" && (
                 <p className="rounded-xl bg-highlight/15 p-3 text-xs text-ink" data-testid="pix-presencial">
-                  O Pix é pago na retirada ou entrega, direto para a loja. O pagamento online entra quando a loja ativar o gateway.
+                  Depois de enviar, aparece o QR Code do Pix na chave da {tenant.name}. A loja confirma quando o pagamento cair.
                 </p>
               )}
+              {isPreorder && !accepted.methods.includes("pix") && <p className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-900">Encomendas precisam de sinal por Pix, e esta loja ainda não recebe Pix pelo app. Fale com a loja pelo WhatsApp.</p>}
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Forma de pagamento">
-                {PAY.map((p) => {
+                {payOptions.map((p) => {
                   const on = pay === p.id;
                   const disabled = isPreorder && p.id !== "pix";
                   return (
@@ -340,7 +361,7 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
                       <span className="flex items-center gap-2 font-semibold text-ink">
                         <p.icon className="size-4" aria-hidden /> {p.label}
                       </span>
-                      <span className="text-xs text-muted">{p.hint}</span>
+                      <span className="text-xs text-muted">{p.id === "vale_refeicao" && accepted.vr.length ? accepted.vr.join(", ") : p.hint}</span>
                     </button>
                   );
                 })}
@@ -354,7 +375,6 @@ export function Checkout({ tenant, mode, table, open, onOpenChange }: { tenant: 
                   </span>
                 </label>
               )}
-              {pay === "vale_refeicao" && <p className="text-xs text-muted">Aceitamos: {settings?.payments.acceptVR.join(", ")}.</p>}
             </section>
 
             <div className="flex gap-2">

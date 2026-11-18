@@ -12,6 +12,7 @@ import { ROOT_DOMAIN } from "@/config/saas-brand";
 import { dataUrlToFile, fileToDataUrl } from "@/lib/image";
 import { updateTenant } from "@/lib/repositories";
 import { isRemote, useStoreMenu } from "@/lib/repositories/engine";
+import { nicheById, nicheFromCategory } from "@/lib/niche-presets";
 import { remoteUpdateBrand, remoteUploadImage } from "@/lib/repositories/remote";
 import { markStep } from "@/lib/training/progress";
 import type { Tenant } from "@/lib/types";
@@ -23,6 +24,12 @@ const PRESETS: { name: string; theme: Partial<Tenant["theme"]> }[] = [
   { name: "Padaria clara", theme: { paper: "#FFFBF2", surface: "#FFFFFF", ink: "#3B2410", muted: "#715A44", primary: "#B4541A", secondary: "#2F6B4F", accent: "#E39B3A", accentText: "#9A4A12", highlight: "#E39B3A", line: "#F0E3CC", dark: false, fontDisplay: "serif" } },
   { name: "Confeitaria rosa", theme: { paper: "#FFF6F8", surface: "#FFFFFF", ink: "#3A1A26", muted: "#7A4E5E", primary: "#B83A68", secondary: "#5E7C6B", accent: "#F2A7BD", accentText: "#A12E58", highlight: "#E7B04A", line: "#F6D8E1", dark: false, fontDisplay: "serif" } },
 ];
+
+/** Tema claro a partir da paleta do nicho: texto do botão e acento sempre com contraste AA. */
+function nicheTheme(primary: string, accent: string): Partial<Tenant["theme"]> {
+  const paper = "#FAF8F5";
+  return { paper, surface: "#FFFFFF", ink: "#1E1E1E", muted: "#5B5B5B", primary, primaryInk: readableInk(primary), secondary: primary, accent, accentText: contrastRatio(accent, paper) >= 4.5 ? accent : primary, highlight: accent, line: "#E7E2DA", dark: false };
+}
 
 export default function AparenciaPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -42,6 +49,9 @@ function Editor({ tenant }: { tenant: Tenant }) {
   const setTheme = (patch: Partial<Tenant["theme"]>) => setDraft((d) => ({ ...d, theme: { ...d.theme, ...patch } }));
   const contrast = contrastRatio(t.primary, t.primaryInk);
   const bodyContrast = contrastRatio(t.paper, t.ink);
+  // Cores sugeridas do nicho da loja primeiro (QA-18); os estilos genéricos ficam depois.
+  const niche = nicheById(nicheFromCategory(tenant.category) ?? "");
+  const presets = [...(niche?.palettes.map((p) => ({ name: p.name, theme: nicheTheme(p.primary, p.accent) })) ?? []), ...PRESETS];
 
   const upload = async (field: "logo" | "cover", f?: File) => {
     if (!f) return;
@@ -58,7 +68,7 @@ function Editor({ tenant }: { tenant: Tenant }) {
   };
 
   const save = async () => {
-    if (!/^[a-z0-9-]{3,30}$/.test(draft.subdomain)) return toast.error("Subdomínio: 3 a 30 letras minúsculas, números ou hífen");
+    if (!/^[a-z0-9-]{3,30}$/.test(draft.subdomain)) return toast.error("Endereço do cardápio: de 3 a 30 letras minúsculas ou números.");
     if (contrast < 4.5 || bodyContrast < 4.5) return toast.error("Ajuste as cores: o contraste mínimo é 4,5:1 para leitura (WCAG AA).");
     if (!remote) {
       updateTenant(tenant.id, { name: draft.name, tagline: draft.tagline, logo: draft.logo, cover: draft.cover, theme: draft.theme, subdomain: draft.subdomain });
@@ -127,7 +137,7 @@ function Editor({ tenant }: { tenant: Tenant }) {
           <Card className="grid gap-4">
             <h2 className="font-bold">Cores e tipografia</h2>
             <div className="flex flex-wrap gap-2">
-              {PRESETS.map((p) => (
+              {presets.map((p) => (
                 <button key={p.name} type="button" onClick={() => setTheme(p.theme)} className="flex min-h-11 items-center gap-2 rounded-full border border-cz-border px-3 text-sm font-semibold hover:bg-cz-surface-2">
                   <span className="flex" aria-hidden>
                     {[p.theme.paper, p.theme.primary, p.theme.accent].map((c) => (
@@ -178,14 +188,14 @@ function Editor({ tenant }: { tenant: Tenant }) {
 
           <Card className="grid gap-3">
             <h2 className="font-bold">Endereço do app</h2>
-            <Field label="Subdomínio" id="sd" hint="Funciona com Cloudflare/Vercel (wildcard). Domínio próprio: fale com o suporte.">
+            <Field label="Endereço do seu cardápio" id="sd" hint="É o que o cliente digita no celular. Quer um endereço com o seu próprio nome (.com.br)? Fale com o suporte.">
               <div className="flex items-center overflow-hidden rounded-xl border border-cz-border">
-                <input id="sd" value={draft.subdomain} onChange={(e) => setDraft({ ...draft, subdomain: slugify(e.target.value).slice(0, 30) })} className="min-h-11 min-w-0 flex-1 px-3 text-base" />
+                <input id="sd" value={draft.subdomain} autoComplete="off" onChange={(e) => setDraft({ ...draft, subdomain: slugify(e.target.value).replace(/-/g, "").slice(0, 30) })} className="min-h-11 min-w-0 flex-1 px-3 text-base" />
                 <span className="bg-cz-surface-2 px-3 py-3 text-sm text-cz-muted">.{ROOT_DOMAIN}</span>
               </div>
             </Field>
             <p className="text-sm text-cz-muted">
-              Caminho alternativo, sem DNS: <code className="rounded bg-cz-surface-2 px-1.5">/loja/{tenant.slug}</code>
+              Também funciona: <code className="rounded bg-cz-surface-2 px-1.5">comandazero.com.br/loja/{tenant.slug}</code>
             </p>
           </Card>
         </div>

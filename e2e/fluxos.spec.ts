@@ -202,6 +202,59 @@ test.describe("Fluxo do pedido ponta a ponta", () => {
   });
 });
 
+test.describe("Pagamento no acompanhamento (QA-01/02/07)", () => {
+  test("dinheiro não pede Pix; Pix na chave mostra QR com a chave da loja", async ({ page }) => {
+    await page.goto("/loja/cafe-e-flor");
+    await addItem(page, "Brownie da Casa");
+    await page.getByRole("button", { name: /Ver carrinho/ }).last().click();
+    // Vale-refeição só aparece quando a loja liga a opção.
+    await expect(page.getByRole("radio", { name: /Vale-refeição/ })).toHaveCount(0);
+    await page.getByLabel("Nome").fill("Cliente Dinheiro");
+    await page.getByLabel("WhatsApp").fill("19999990001");
+    await page.getByRole("radio", { name: /Dinheiro/ }).click();
+    await page.getByLabel("Troco para quanto?").fill("50");
+    await page.getByRole("button", { name: /Enviar pedido/ }).click();
+    await page.waitForURL("**/pedido/**");
+    await expect(page.getByTestId("pagamento-entrega")).toContainText("Dinheiro");
+    await expect(page.getByTestId("pagamento-entrega")).toContainText("troco");
+    await expect(page.getByText(/Aguardando confirmação do Pix/)).toHaveCount(0);
+
+    // Chave Pix própria da loja (Pagamentos) vira QR + copia e cola no acompanhamento.
+    await page.goto("/painel/cafe-e-flor/integracoes");
+    await page.getByRole("tab", { name: /Pagamentos/ }).click();
+    await page.getByLabel("Chave Pix").fill("loja@cafeeflor.com.br");
+    await page.getByLabel("Nome de quem recebe").fill("Cafe e Flor");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await page.goto("/loja/cafe-e-flor");
+    await addItem(page, "Brownie da Casa");
+    await page.getByRole("button", { name: /Ver carrinho/ }).last().click();
+    await page.getByLabel("Nome").fill("Cliente Pix");
+    await page.getByLabel("WhatsApp").fill("19999990002");
+    await page.getByRole("button", { name: /Pagar com Pix/ }).click();
+    const pix = page.getByRole("dialog", { name: "Pague com Pix" });
+    expect(await pix.getByLabel("Pix copia e cola").inputValue()).toContain("loja@cafeeflor.com.br");
+    await page.keyboard.press("Escape");
+    await page.waitForURL("**/pedido/**");
+    await expect(page.getByTestId("pix-pagamento").getByRole("img", { name: /QR Code Pix/ })).toBeVisible();
+    expect(await page.getByLabel("Pix copia e cola").inputValue()).toContain("loja@cafeeflor.com.br");
+  });
+
+  test("painel mostra forma de pagamento e troco no pedido", async ({ page }) => {
+    await page.goto("/loja/cafe-e-flor");
+    await addItem(page, "Brownie da Casa");
+    await page.getByRole("button", { name: /Ver carrinho/ }).last().click();
+    await page.getByLabel("Nome").fill("Cliente Troco");
+    await page.getByLabel("WhatsApp").fill("19999990003");
+    await page.getByRole("radio", { name: /Dinheiro/ }).click();
+    await page.getByLabel("Troco para quanto?").fill("50");
+    await page.getByRole("button", { name: /Enviar pedido/ }).click();
+    await page.waitForURL("**/pedido/**");
+    await page.goto("/painel/cafe-e-flor/pedidos");
+    const card = page.getByRole("main").locator("li", { hasText: "Cliente Troco" }).first();
+    await expect(card.getByTestId("pagamento-pedido")).toContainText(/Dinheiro · troco para R\$\s50,00/);
+  });
+});
+
 test.describe("Retaguarda", () => {
   test("PDV: atalho F2, código, pagamento misto, troco e cupom 58/80 mm", async ({ page }) => {
     await page.goto("/painel/cafe-e-flor/pdv");
@@ -262,11 +315,15 @@ test.describe("Retaguarda", () => {
   test("Integrações: payload Whaileys/Evolution e gateways", async ({ page }) => {
     await page.goto("/painel/cafe-e-flor/integracoes");
     await page.getByLabel("Mensagem", { exact: true }).selectOption("list");
+    // Payload técnico fica em "Detalhes técnicos" (fechado por padrão para o lojista).
+    await page.getByText("Detalhes técnicos (para o suporte)").first().click();
     await expect(page.locator("pre").first()).toContainText('"sections"');
     await page.getByLabel("Mensagem", { exact: true }).selectOption("evo-text");
     await expect(page.getByText(/\/message\/sendText\//)).toBeVisible();
     await page.getByRole("tab", { name: /Pagamentos/ }).click();
+    await page.getByTestId("pagamento-avancado").locator("> summary").click();
     await page.getByRole("button", { name: /Mercado Pago/ }).click();
+    await page.getByTestId("pagamento-avancado").getByText("Detalhes técnicos (para o suporte)").last().click();
     await expect(page.getByText("https://api.mercadopago.com/v1/payments")).toBeVisible();
     await expect(page.getByText(/→ PAGO/)).toBeVisible();
     await page.getByRole("tab", { name: /E-mail/ }).click();

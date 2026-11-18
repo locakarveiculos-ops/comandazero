@@ -5,7 +5,9 @@ test.describe("Central de treinamento e tours", () => {
   test("central lista guias com prints, busca e filtros", async ({ page }) => {
     await page.goto("/painel/cafe-e-flor/treinamento");
     await expect(page.getByRole("heading", { name: "Central de treinamento" })).toBeVisible();
-    await expect(page.getByTestId("lista-guias").locator("li")).toHaveCount(ARTICLES.length);
+    // Guias só do Super Admin não aparecem no painel da loja.
+    await expect(page.getByTestId("lista-guias").locator("li")).toHaveCount(ARTICLES.filter((a) => !a.roles.every((r) => r === "super-admin")).length);
+    await expect(page.getByLabel("Filtrar por função").locator("option", { hasText: "Super Admin" })).toHaveCount(0);
     await page.getByTestId("busca-treinamento").fill("troco");
     await expect(page.getByTestId("lista-guias").locator("li")).toHaveCount(1);
     await expect(page.getByTestId("lista-guias")).toContainText("PDV");

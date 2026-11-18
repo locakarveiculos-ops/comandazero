@@ -1,7 +1,9 @@
 "use client";
 
-import { Bike, Check, ChefHat, ClipboardCheck, MessageCircle, PackageCheck, Star, Upload } from "lucide-react";
+/* eslint-disable @next/next/no-img-element -- QR Pix gerado em data URL */
+import { Bike, Check, ChefHat, ClipboardCheck, Copy, MessageCircle, PackageCheck, Star, Upload } from "lucide-react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -10,22 +12,29 @@ import { TenantTheme, displayFont } from "@/components/tenant-theme";
 import { Skeleton } from "@/components/ui";
 import { PushToggle } from "@/components/push-toggle";
 import { useHydrated } from "@/components/providers";
-import { useOrder } from "@/lib/repositories";
+import { trackingPayment, type TrackingPayment } from "@/lib/payment-info";
+import { useIntegrations, useOrder } from "@/lib/repositories";
 import { isRemote } from "@/lib/repositories/engine";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, PaymentMethod } from "@/lib/types";
 import { MODE_LABEL, STATUS_LABEL, cn, fmtDateTime, fmtTime, money } from "@/lib/utils";
 
 type Tracked = {
   id: string; number: number; status: OrderStatus; mode: Order["mode"]; payment_status: Order["paymentStatus"];
+  payment_method?: PaymentMethod | null; change_for?: number | null;
+  subtotal?: number; delivery_fee?: number; discount?: number;
   total: number; deposit: number | null; scheduled_for: string | null; table_number: string | null; created_at: string;
-  customer_first_name: string; items: { name: string; qty: number; unit_price: number; options: { name: string }[] }[];
+  customer_first_name: string; items: { name: string; qty: number; unit_price: number; options: { name: string }[]; notes?: string | null }[];
   events: { status: OrderStatus; at: string }[];
+  pix?: { key: string; name: string; city: string } | null;
   reviewed?: boolean;
 };
 
+// knowsPayment: o banco já devolve a forma de pagamento (migration 20261118000100). Antes dela, nada de aviso de pagamento.
+type TrackState = { order: Order | null; loading: boolean; reviewed: boolean; pix: Tracked["pix"]; knowsPayment: boolean };
+
 /** Loja real: acompanha pelo token (qualquer aparelho). Atualiza a cada 5 s enquanto o pedido não termina. */
 function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
-  const [state, setState] = useState<{ order: Order | null; loading: boolean; reviewed: boolean }>({ order: null, loading: enabled, reviewed: false });
+  const [state, setState] = useState<TrackState>({ order: null, loading: enabled, reviewed: false, pix: null, knowsPayment: false });
   useEffect(() => {
     if (!enabled || !token) return;
     let alive = true;
@@ -34,7 +43,7 @@ function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
       const r = await fetch(`/api/rastreio?id=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`, { cache: "no-store" }).catch(() => null);
       if (!alive) return;
       const d = r?.ok ? ((await r.json()) as Tracked) : null;
-      setState({ order: d ? toOrder(d) : null, loading: false, reviewed: !!d?.reviewed });
+      setState({ order: d ? toOrder(d) : null, loading: false, reviewed: !!d?.reviewed, pix: d?.pix ?? null, knowsPayment: d?.payment_method != null });
       if (!d || !["entregue", "cancelado"].includes(d.status)) timer = setTimeout(load, 5000);
     };
     void load();
@@ -43,14 +52,16 @@ function useTrackedOrder(id: string, token: string | null, enabled: boolean) {
       clearTimeout(timer);
     };
   }, [id, token, enabled]);
-  return enabled && !token ? { order: null, loading: false, reviewed: false } : state;
+  return enabled && !token ? { order: null, loading: false, reviewed: false, pix: null, knowsPayment: false } : state;
 }
 
 const toOrder = (d: Tracked): Order => ({
   id: d.id, number: d.number, tenantId: "", channel: "loja", mode: d.mode, status: d.status, paymentStatus: d.payment_status,
-  payments: [], paymentMethod: "pix", gateway: "presencial",
-  items: d.items.map((i, k) => ({ key: String(k), productId: "", name: i.name, image: "", unitPrice: Number(i.unit_price), qty: i.qty, options: (i.options ?? []).map((o) => ({ groupId: "", groupName: "", choiceId: "", name: o.name, price: 0 })), notes: "" })),
-  subtotal: Number(d.total), deliveryFee: 0, discount: 0, total: Number(d.total), customer: { name: d.customer_first_name, phone: "" },
+  // Sem payment_method (banco antes da migration), knowsPayment = false e a tela não fala de pagamento.
+  payments: [], paymentMethod: d.payment_method ?? "dinheiro", gateway: "presencial",
+  items: d.items.map((i, k) => ({ key: String(k), productId: "", name: i.name, image: "", unitPrice: Number(i.unit_price), qty: i.qty, options: (i.options ?? []).map((o) => ({ groupId: "", groupName: "", choiceId: "", name: o.name, price: 0 })), notes: i.notes ?? "" })),
+  subtotal: Number(d.subtotal ?? d.total), deliveryFee: Number(d.delivery_fee ?? 0), discount: Number(d.discount ?? 0), total: Number(d.total), customer: { name: d.customer_first_name, phone: "" },
+  changeFor: d.change_for == null ? undefined : Number(d.change_for),
   table: d.table_number ?? undefined, scheduledFor: d.scheduled_for ?? undefined, deposit: d.deposit == null ? undefined : Number(d.deposit),
   createdAt: d.created_at, updatedAt: d.created_at, history: d.events, seen: true,
 });
@@ -63,6 +74,7 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
   const localOrder = useOrder(id);
   const tracked = useTrackedOrder(id, token, remote);
   const order = remote ? tracked.order : localOrder;
+  const settings = useIntegrations(remote ? undefined : tenant?.id);
   const [proof, setProof] = useState<string>("");
 
   if (!tenant || (!remote && !hydrated) || (remote && tracked.loading)) return <Skeleton className="m-4 h-80" />;
@@ -94,6 +106,9 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
     return { done: i <= idx, at };
   };
   const msg = encodeURIComponent(`Olá! Sobre meu pedido #${order.number} (${order.customer.name}).`);
+  // Pix: loja real recebe a chave pelo rastreio; demonstração usa a chave salva no navegador.
+  const pixKey = remote ? tracked.pix : settings?.payments.pixKey ? { key: settings.payments.pixKey, name: settings.payments.pixName || tenant.name, city: tenant.address.city || "BRASIL" } : null;
+  const payment = order.status === "cancelado" || (remote && !tracked.knowsPayment) ? null : trackingPayment(order, pixKey);
 
   const onProof = (f: File | undefined) => {
     if (!f) return;
@@ -117,7 +132,13 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
           <p className="mt-1 text-ink" aria-live="polite">
             {order.status === "cancelado" ? "Este pedido foi cancelado." : <>Status: <b>{STATUS_LABEL[order.status]}</b></>}
           </p>
-          {order.paymentStatus === "pendente" && order.paymentMethod === "pix" && <p className="mt-3 rounded-xl bg-amber-100 p-3 text-sm font-semibold text-amber-950">Aguardando confirmação do Pix. Se já pagou, envie o comprovante abaixo.</p>}
+          {payment?.kind === "na_entrega" && (
+            <p className="mt-3 rounded-xl bg-highlight/15 p-3 text-sm text-ink" data-testid="pagamento-entrega">
+              Pagamento: <b>{payment.label}</b> {order.mode === "delivery" ? "na entrega" : order.mode === "mesa" ? "na mesa" : "na retirada"}.
+              {payment.change > 0 && <> Levaremos troco de <b>{money(payment.change)}</b>.</>}
+            </p>
+          )}
+          {payment?.kind === "pix_sem_chave" && <p className="mt-3 rounded-xl bg-amber-100 p-3 text-sm font-semibold text-amber-950">Pagamento por Pix: a loja envia a chave pelo WhatsApp ou recebe na entrega.</p>}
           {order.scheduledFor && <p className="mt-3 rounded-xl bg-highlight/15 p-3 text-sm text-ink">Retirada agendada para <b>{fmtDateTime(order.scheduledFor)}</b></p>}
           {remote && token && !["entregue", "cancelado"].includes(order.status) && <PushToggle variant="customer" target={{ kind: "customer", orderId: id, token }} className="mt-3 w-full" />}
 
@@ -141,6 +162,8 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
           </ol>
         </section>
 
+        {payment?.kind === "pix" && <PixPay payment={payment} />}
+
         <section className="rounded-3xl border border-line bg-surface p-5 text-ink" aria-labelledby="resumo">
           <h2 id="resumo" className="font-bold">
             Resumo
@@ -151,11 +174,24 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
                 <span>
                   {i.qty}× {i.name}
                   {i.options.length > 0 && <span className="block text-xs text-muted">{i.options.map((o) => o.name).join(", ")}</span>}
+                  {i.notes && <span className="block text-xs italic text-muted">Obs.: {i.notes}</span>}
                 </span>
                 <span className="tabular-nums">{money(i.unitPrice * i.qty)}</span>
               </li>
             ))}
           </ul>
+          {order.deliveryFee > 0 && (
+            <p className="mt-3 flex justify-between border-t border-line pt-3 text-sm">
+              <span>Entrega</span>
+              <span className="tabular-nums">{money(order.deliveryFee)}</span>
+            </p>
+          )}
+          {order.discount > 0 && (
+            <p className="mt-1 flex justify-between text-sm">
+              <span>Desconto</span>
+              <span className="tabular-nums">− {money(order.discount)}</span>
+            </p>
+          )}
           <p className="mt-3 flex justify-between border-t border-line pt-3 font-bold">
             <span>Total</span>
             <span className="tabular-nums">{money(order.total)}</span>
@@ -170,7 +206,7 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
             <MessageCircle className="size-5" aria-hidden /> Chamar no WhatsApp
           </a>
           {/* Envio de comprovante ainda não grava arquivo: fica só na demonstração. Loja real recebe pelo WhatsApp. */}
-          {!remote && (
+          {!remote && payment?.kind === "pix" && (
           <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 font-semibold text-ink focus-within:outline focus-within:outline-3 focus-within:outline-accent-text">
             <Upload className="size-5" aria-hidden /> {proof ? "Comprovante enviado" : "Enviar comprovante"}
             <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => onProof(e.target.files?.[0])} />
@@ -179,6 +215,44 @@ export function Tracking({ slug, id }: { slug: string; id: string }) {
         </div>
       </main>
     </TenantTheme>
+  );
+}
+
+/** Pix na chave da loja: QR + copia e cola com o valor do pedido. A confirmação é feita pela loja ao ver o Pix na conta. */
+function PixPay({ payment }: { payment: Extract<TrackingPayment, { kind: "pix" }> }) {
+  const [qr, setQr] = useState("");
+  useEffect(() => {
+    QRCode.toDataURL(payment.payload, { margin: 1, width: 440, errorCorrectionLevel: "M" }).then(setQr, () => setQr(""));
+  }, [payment.payload]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(payment.payload);
+      toast.success("Código Pix copiado");
+    } catch {
+      toast.error("Não consegui copiar. Selecione o código e copie manualmente.");
+    }
+  };
+  return (
+    <section className="grid gap-3 rounded-3xl border-2 border-primary bg-surface p-5 text-ink" aria-labelledby="pagar-pix" data-testid="pix-pagamento">
+      <h2 id="pagar-pix" className="font-bold">
+        Pague {money(payment.amount)} com Pix
+      </h2>
+      <div className="mx-auto grid w-full max-w-56 place-items-center rounded-2xl border border-line bg-white p-3">
+        {qr ? <img src={qr} alt="QR Code Pix para pagamento" className="aspect-square w-full" /> : <div className="aspect-square w-full animate-pulse rounded-xl bg-stone-200" />}
+      </div>
+      <label htmlFor="pix-copia" className="text-sm font-semibold">
+        Pix copia e cola
+      </label>
+      <div className="flex gap-2">
+        <input id="pix-copia" readOnly value={payment.payload} onFocus={(e) => e.currentTarget.select()} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 font-mono text-xs" />
+        <button type="button" onClick={copy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-ink">
+          <Copy className="size-4" aria-hidden /> Copiar
+        </button>
+      </div>
+      <p className="text-sm text-muted">
+        Recebedor: <b className="text-ink">{payment.name}</b> · chave {payment.key}. Depois de pagar, a loja confirma o pedido.
+      </p>
+    </section>
   );
 }
 
