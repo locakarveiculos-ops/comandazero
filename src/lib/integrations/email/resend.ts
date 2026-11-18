@@ -4,20 +4,18 @@ export type EmailMessage = { from: string; to: string[]; subject: string; html: 
 
 export const RESEND_API = "https://api.resend.com";
 
-/** Remetente do domínio verificado da loja, ex.: "Café e Flor <pedidos@notificacoes.cafeeflor.comandazero.com.br>". */
-export const fromAddress = (name: string, subdomain: string, local = "pedidos") => `${name.replace(/[<>"]/g, "")} <${local}@${subdomain}>`;
+/**
+ * Domínio de envio verificado no Resend (fixo para todo o sistema). Cada loja envia com o próprio nome e um
+ * endereço só dela: "Café e Flor <cafeeflor@comandazero.com.br>". Assim não é preciso verificar um domínio por
+ * loja no Resend nem criar DNS por loja; respostas do cliente vão para o e-mail da loja (reply_to).
+ */
+export const EMAIL_DOMAIN = process.env.RESEND_FROM_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "comandazero.com.br";
 
-export const tenantEmailDomain = (tenantSubdomain: string, rootDomain: string) => `notificacoes.${tenantSubdomain}.${rootDomain}`;
+/** Endereço da loja no domínio verificado: só letras e números do subdomínio (máx. 64, limite do e-mail). */
+export const tenantEmailLocal = (tenantSubdomain: string) => tenantSubdomain.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 64) || "pedidos";
 
-/** Registros DNS que o Resend pede para verificar o domínio (valores reais vêm de POST /domains). */
-export function dnsRecordsFor(domain: string) {
-  return [
-    { type: "MX", name: `send.${domain}`, value: "feedback-smtp.sa-east-1.amazonses.com", priority: 10 },
-    { type: "TXT", name: `send.${domain}`, value: "v=spf1 include:amazonses.com ~all" },
-    { type: "TXT", name: `resend._domainkey.${domain}`, value: "p=MIGfMA0GCSqGSIb3DQEB…(chave DKIM gerada pelo Resend)" },
-    { type: "TXT", name: `_dmarc.${domain}`, value: "v=DMARC1; p=none;" },
-  ];
-}
+/** Remetente da loja, ex.: "Café e Flor <cafeeflor@comandazero.com.br>". O nome não aceita < > " (quebrariam o cabeçalho). */
+export const fromAddress = (name: string, tenantSubdomain: string, domain = EMAIL_DOMAIN) => `${name.replace(/[<>"\r\n]/g, "").trim() || "Loja"} <${tenantEmailLocal(tenantSubdomain)}@${domain}>`;
 
 export const buildSendRequest = (msg: EmailMessage, apiKey = "<RESEND_API_KEY>") => ({
   method: "POST" as const,

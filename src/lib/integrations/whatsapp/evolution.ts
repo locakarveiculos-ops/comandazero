@@ -16,14 +16,15 @@ export const evolution = {
     const m = { mediatype: media.mediatype ?? "image", media: media.url, caption: media.caption ?? "", fileName: media.fileName };
     return { method: "POST", path: `/message/sendMedia/${instance}`, body: v === "v2" ? { number: num(to), ...m } : { number: num(to), mediaMessage: m } };
   },
-  createInstance: (instance: string, webhookUrl: string): EvolutionCall => ({
+  // webhookUrl opcional: sem ele a instância só envia (avisos de pedido); com ele, recebe mensagens.
+  createInstance: (instance: string, webhookUrl?: string): EvolutionCall => ({
     method: "POST",
     path: "/instance/create",
     body: {
       instanceName: instance,
       integration: "WHATSAPP-BAILEYS",
       qrcode: true,
-      webhook: { url: webhookUrl, byEvents: false, base64: false, events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"] },
+      ...(webhookUrl ? { webhook: { url: webhookUrl, byEvents: false, base64: false, events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"] } } : {}),
     },
   }),
   connect: (instance: string): EvolutionCall => ({ method: "GET", path: `/instance/connect/${instance}` }),
@@ -36,6 +37,25 @@ export const evolution = {
   }),
 };
 
+/** Instância fixa por loja. Prefixo próprio para não colidir com instâncias de outros sistemas no mesmo servidor. */
+export const evolutionInstanceName = (slug: string) => `cz-${slug}`;
+
+export type EvolutionStatus = { state: "open" | "connecting" | "disconnected"; qr: string | null; pairingCode: string | null; phone: string | null };
+
+/**
+ * Normaliza as respostas da Evolution v2 (connect: { base64, code, pairingCode }; connectionState: { instance: { state } };
+ * create: { qrcode: { base64 } }) num formato só, o mesmo do WhatsApp da loja.
+ */
+export function evolutionView(r: unknown): EvolutionStatus {
+  const d = (r ?? {}) as { base64?: string; pairingCode?: string; qrcode?: { base64?: string; pairingCode?: string }; instance?: { state?: string; owner?: string; ownerJid?: string } };
+  const qr = d.base64 ?? d.qrcode?.base64 ?? null;
+  const pairing = d.pairingCode ?? d.qrcode?.pairingCode ?? null;
+  const raw = d.instance?.state ?? (qr ? "connecting" : "close");
+  const state = raw === "open" ? "open" : raw === "connecting" || qr ? "connecting" : "disconnected";
+  const owner = (d.instance?.ownerJid ?? d.instance?.owner ?? "").split("@")[0].replace(/\D/g, "");
+  return { state, qr: qr && qr.startsWith("data:") ? qr : qr ? `data:image/png;base64,${qr}` : null, pairingCode: pairing, phone: owner || null };
+}
+
 export async function evolutionRequest<T = unknown>(baseUrl: string, apiKey: string, call: EvolutionCall): Promise<T> {
   const r = await fetch(`${baseUrl.replace(/\/+$/, "")}${call.path}`, {
     method: call.method,
@@ -44,8 +64,13 @@ export async function evolutionRequest<T = unknown>(baseUrl: string, apiKey: str
     signal: AbortSignal.timeout(20000),
     cache: "no-store",
   });
-  const d = (await r.json().catch(() => ({}))) as { message?: unknown };
-  if (!r.ok) throw new Error(`Evolution: ${typeof d.message === "string" ? d.message : `HTTP ${r.status}`}`);
+  // v2 responde erro como { status, error, response: { message: string[] } }.
+  const d = (await r.json().catch(() => ({}))) as { message?: unknown; response?: { message?: unknown } };
+  if (!r.ok) {
+    const m = d.response?.message ?? d.message;
+    const text = Array.isArray(m) ? m.join(" ") : typeof m === "string" ? m : "";
+    throw Object.assign(new Error(`Evolution: HTTP ${r.status}${text ? ` ${text}` : ""}`), { status: r.status });
+  }
   return d as T;
 }
 

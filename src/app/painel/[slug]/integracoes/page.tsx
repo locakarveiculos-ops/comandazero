@@ -9,11 +9,11 @@ import { toast } from "sonner";
 import { useStoreTenant } from "@/components/loja/use-store-tenant";
 import { WhatsappConnect } from "@/components/painel/whatsapp-connect";
 import { Badge, Button, Card, Field, Input, Select, Switch, Textarea } from "@/components/ui";
-import { ROOT_DOMAIN } from "@/config/saas-brand";
 import { cakeConfirmationEmail, dailyCloseEmail, orderReceiptEmail, welcomeTenantEmail } from "@/lib/integrations/email/templates";
-import { buildSendRequest, dnsRecordsFor, fromAddress, tenantEmailDomain } from "@/lib/integrations/email/resend";
+import { buildSendRequest, fromAddress } from "@/lib/integrations/email/resend";
 import { GATEWAYS } from "@/lib/integrations/payments/factory";
-import { evolution } from "@/lib/integrations/whatsapp/evolution";
+import { evolution, evolutionInstanceName } from "@/lib/integrations/whatsapp/evolution";
+import { EvolutionConnect } from "@/components/painel/evolution-connect";
 import { numberedCard } from "@/lib/integrations/whatsapp/card";
 import { welcome } from "@/lib/integrations/whatsapp/bot";
 import { buildOrderCard, readChannelBlob } from "@/lib/integrations/whatsapp/notify";
@@ -118,9 +118,9 @@ function WhatsappTab({ settings, set }: TabProps) {
       return numberedCard("Escolha uma categoria do nosso cardápio:", cats.map((c) => ({ id: `cat:${c.id}`, title: c.name })), true, "Ver categorias").card;
     }
     if (kind === "menu") return welcome({ tenant, categories, products }, origin).card;
-    if (kind === "evo-text") return evolution.sendText(w.evolution.instance || "minha-instancia", number, `Olá! Pedido recebido na ${tenant.name}.`);
-    return evolution.sendMedia(w.evolution.instance || "minha-instancia", number, { url: products[0]?.image ?? "", caption: products[0]?.name });
-  }, [kind, sample, tenant, settings, origin, categories, products, to, w.evolution.instance]);
+    if (kind === "evo-text") return evolution.sendText(evolutionInstanceName(tenant.slug), number, `Olá! Pedido recebido na ${tenant.name}.`);
+    return evolution.sendMedia(evolutionInstanceName(tenant.slug), number, { url: products[0]?.image ?? "", caption: products[0]?.name });
+  }, [kind, sample, tenant, settings, origin, categories, products, to]);
 
   const isWhaileys = !kind.startsWith("evo");
   const send = async () => {
@@ -151,8 +151,8 @@ function WhatsappTab({ settings, set }: TabProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
           kind === "evo-text"
-            ? { op: "sendText", instance: w.evolution.instance || tenant.slug, to, text: body.text ?? body.textMessage?.text }
-            : { op: "sendMedia", instance: w.evolution.instance || tenant.slug, to, url: body.media ?? body.mediaMessage?.media, caption: body.caption ?? body.mediaMessage?.caption },
+            ? { op: "sendText", slug: tenant.slug, to, text: body.text ?? body.textMessage?.text }
+            : { op: "sendMedia", slug: tenant.slug, to, url: body.media ?? body.mediaMessage?.media, caption: body.caption ?? body.mediaMessage?.caption },
         ),
       });
       const d = (await r.json().catch(() => ({}))) as { error?: string };
@@ -176,7 +176,7 @@ function WhatsappTab({ settings, set }: TabProps) {
           {(
             [
               ["whaileys", "WhatsApp da loja (recomendado)", "Mensagens com botões e listas · um número por loja"],
-              ["evolution", "Servidor próprio (técnico)", "Para quem já tem um servidor de WhatsApp"],
+              ["evolution", "Conexão alternativa", "Outro servidor de WhatsApp, também por QR Code"],
             ] as const
           ).map(([id, label, hint]) => (
             <button key={id} type="button" role="radio" aria-checked={w.provider === id} onClick={() => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, provider: id } }))} className={cn("rounded-2xl border p-3 text-left", w.provider === id ? "border-cz-text bg-cz-surface-2" : "border-cz-border")}>
@@ -188,17 +188,8 @@ function WhatsappTab({ settings, set }: TabProps) {
         {w.provider === "whaileys" ? (
           <WhatsappConnect tenant={tenant} included={wa} />
         ) : (
-          <div className="grid gap-3">
-            <Field label="Endereço do servidor" id="evo-url">
-              <Input id="evo-url" value={w.evolution.baseUrl} placeholder="https://evolution.suaempresa.com.br" onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, baseUrl: e.target.value } } }))} />
-            </Field>
-            <Field label="Nome da conexão" id="evo-inst">
-              <Input id="evo-inst" value={w.evolution.instance} placeholder={tenant.slug} onChange={(e) => set((s) => ({ ...s, whatsapp: { ...s.whatsapp, evolution: { ...s.whatsapp.evolution, instance: e.target.value } } }))} />
-            </Field>
-            <p className="rounded-xl bg-cz-surface-2 p-3 text-xs text-cz-muted">
-              URL e API key ficam só no servidor (<code>EVOLUTION_API_URL</code>, <code>{w.evolution.apiKeyRef}</code>). Criar instância: <code>POST {evolution.createInstance(w.evolution.instance || tenant.slug, "…").path}</code> · QR: <code>GET {evolution.connect(w.evolution.instance || tenant.slug).path}</code>
-            </p>
-          </div>
+          // Servidor e chave fixos no ComandaZero; cada loja tem a própria conexão (cz-<loja>).
+          <EvolutionConnect tenant={tenant} />
         )}
 
         <h3 className="mt-2 font-bold">Gatilhos automáticos</h3>
@@ -247,7 +238,7 @@ function WhatsappTab({ settings, set }: TabProps) {
         <Button variant="brand" onClick={send} loading={sending}>
           <Send className="size-4" aria-hidden /> {isWhaileys ? "Enviar de verdade pelo WhatsApp da loja" : "Enviar pelo servidor próprio"}
         </Button>
-        {!isWhaileys && <p className="text-xs text-cz-muted">Precisa que o suporte cadastre o seu servidor. Sem isso, o envio avisa que não está configurado.</p>}
+        {!isWhaileys && <p className="text-xs text-cz-muted">Conecte o número acima (Gerar QR Code) antes de enviar.</p>}
       </Card>
     </div>
   );
@@ -461,8 +452,10 @@ function EmailTab({ settings, set }: TabProps) {
   const { tenant, sample } = useTenantCtx();
   const orders = useOrders(tenant.id);
   const e = settings.email;
-  const domain = e.subdomain || tenantEmailDomain(tenant.subdomain, ROOT_DOMAIN);
+  // Remetente fixo por loja no domínio verificado do sistema (sem DNS por loja).
+  const from = fromAddress(e.fromName || tenant.name, tenant.subdomain);
   const [tpl, setTpl] = useState<"pedido" | "bolo" | "caixa" | "boas-vindas">("pedido");
+  const [sending, setSending] = useState(false);
   const origin = useOrigin();
 
   const email = useMemo(() => {
@@ -488,7 +481,22 @@ function EmailTab({ settings, set }: TabProps) {
     return welcomeTenantEmail(tenant, `${origin}/painel/${tenant.slug}`, `${origin}/loja/${tenant.slug}`, origin);
   }, [tpl, sample, orders, tenant, origin]);
 
-  const request = buildSendRequest({ from: fromAddress(e.fromName || tenant.name, domain), to: [e.ownerEmail || "cliente@exemplo.com.br"], subject: email.subject, html: "<…html do template…>" });
+  const request = buildSendRequest({ from, to: [e.ownerEmail || "cliente@exemplo.com.br"], subject: email.subject, html: "<…html do template…>" });
+
+  const sendTest = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.ownerEmail)) return toast.error("Informe o e-mail do dono para receber o teste.");
+    setSending(true);
+    try {
+      const r = await fetch("/api/email/teste", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: tenant.slug }) });
+      const d = (await r.json().catch(() => ({}))) as { error?: string; to?: string };
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      toast.success(`E-mail de teste enviado para ${d.to}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
@@ -503,39 +511,22 @@ function EmailTab({ settings, set }: TabProps) {
         <Field label="Nome do remetente" id="em-name">
           <Input id="em-name" value={e.fromName} placeholder={tenant.name} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, fromName: ev.target.value } }))} />
         </Field>
-        <Field label="Endereço de envio" id="em-sub">
-          <Input id="em-sub" value={e.subdomain} placeholder={tenantEmailDomain(tenant.subdomain, ROOT_DOMAIN)} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, subdomain: ev.target.value.toLowerCase().trim(), verified: false } }))} />
-        </Field>
-        <Field label="E-mail do dono (fechamento de caixa)" id="em-owner">
-          <Input id="em-owner" type="email" value={e.ownerEmail} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, ownerEmail: ev.target.value } }))} />
-        </Field>
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            Configuração do domínio (o suporte faz para você) <Badge tone={e.verified ? "green" : "amber"}>{e.verified ? "Verificado" : "Pendente"}</Badge>
-          </p>
-          <ul className="grid gap-1.5 text-xs">
-            {dnsRecordsFor(domain).map((r) => (
-              <li key={r.name + r.type} className="grid grid-cols-[44px_1fr] gap-2 rounded-lg bg-cz-surface-2 p-2 font-mono">
-                <b>{r.type}</b>
-                <span className="break-all">
-                  {r.name}
-                  <br />
-                  <span className="text-cz-muted">{r.value}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => {
-              set((s) => ({ ...s, email: { ...s.email, verified: true } }));
-              toast.success("Domínio marcado como verificado (teste)");
-            }}
-          >
-            Verificar domínio
-          </Button>
+        <div className="grid gap-1 rounded-xl bg-cz-surface-2 p-3 text-sm">
+          <span className="text-xs font-semibold text-cz-muted">O cliente recebe de</span>
+          <span className="break-all font-semibold" data-testid="email-remetente">
+            {from}
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-cz-muted">
+            <Badge tone="green">Pronto para enviar</Badge> Endereço exclusivo da sua loja, sem configurar nada.
+          </span>
         </div>
+        <Field label="E-mail do dono" id="em-owner" hint="Recebe o fechamento do caixa e as respostas dos clientes.">
+          <Input id="em-owner" type="email" autoComplete="email" value={e.ownerEmail} onChange={(ev) => set((s) => ({ ...s, email: { ...s.email, ownerEmail: ev.target.value.trim() } }))} />
+        </Field>
+        <Button variant="secondary" className="justify-self-start" onClick={() => void sendTest()} loading={sending} disabled={tenant.isDemo !== false}>
+          <Send className="size-4" aria-hidden /> Enviar e-mail de teste para mim
+        </Button>
+        {tenant.isDemo !== false && <p className="text-xs text-cz-muted">Na loja de demonstração o envio real fica desligado.</p>}
       </Card>
       <Card className="grid min-w-0 content-start gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
